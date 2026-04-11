@@ -160,6 +160,10 @@ code {
   margin-top: 1.15rem;
 }
 
+.toc-standalone-link + .toc-group {
+  margin-top: 1.15rem;
+}
+
 .toc-standalone-link {
   display: block;
   margin-top: 1.15rem;
@@ -270,6 +274,13 @@ code {
   margin-top: 0.4rem;
   font-weight: 700;
   color: var(--accent);
+}
+
+.intro-source-title {
+  margin-top: 0.6rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--muted);
 }
 
 .rules-content {

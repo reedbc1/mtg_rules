@@ -96,10 +96,15 @@
       const nonEmpty = lines.map((line) => line.trim()).filter(Boolean);
       const [title, effectiveDate, ...rest] = nonEmpty;
 
+      const introHeading = document.createElement("h2");
+      introHeading.textContent = "Introduction";
+      intro.appendChild(introHeading);
+
       if (title) {
-        const titleNode = document.createElement("h2");
-        titleNode.textContent = title;
-        intro.appendChild(titleNode);
+        const sourceTitle = document.createElement("p");
+        sourceTitle.className = "intro-source-title";
+        sourceTitle.textContent = title;
+        intro.appendChild(sourceTitle);
       }
 
       if (effectiveDate) {
@@ -155,6 +160,12 @@
       toc.replaceChildren();
 
       const fragment = document.createDocumentFragment();
+
+      const introLink = document.createElement("a");
+      introLink.className = "toc-standalone-link";
+      introLink.href = "#intro";
+      introLink.textContent = "Introduction";
+      fragment.appendChild(introLink);
 
       chapters.forEach((chapter) => {
         if (chapter.standalone) {
@@ -407,11 +418,11 @@
       const glossary = document.getElementById("glossary");
 
       chapters.forEach((chapter) => {
-        chapter.hidden = false;
+        chapter.hidden = true;
       });
 
       if (glossary) {
-        glossary.hidden = false;
+        glossary.hidden = true;
       }
 
       if (!target) {
@@ -419,18 +430,24 @@
         return;
       }
 
-      if (target.id === "top" || target.id === "intro") {
+      if (target.id === "top") {
         intro.hidden = false;
         return;
       }
 
-      intro.hidden = true;
       chapters.forEach((chapter) => {
         chapter.hidden = true;
       });
 
       if (glossary) {
         glossary.hidden = true;
+      }
+
+      intro.hidden = true;
+
+      if (target.id === "intro") {
+        intro.hidden = false;
+        return;
       }
 
       const chapterBlock = target.closest(".chapter-block");
