@@ -168,6 +168,7 @@
 
         const group = document.createElement("details");
         group.className = "toc-group";
+        group.dataset.chapterId = makeChapterId(chapter.title);
 
         const heading = document.createElement("summary");
         heading.className = "toc-group-title";
@@ -363,15 +364,69 @@
       rulesRoot.appendChild(glossary);
     }
 
+    function setVisibleBodyForTarget(target) {
+      const intro = document.getElementById("intro");
+      const chapters = document.querySelectorAll(".chapter-block");
+      const glossary = document.getElementById("glossary");
+
+      chapters.forEach((chapter) => {
+        chapter.hidden = false;
+      });
+
+      if (glossary) {
+        glossary.hidden = false;
+      }
+
+      if (!target) {
+        intro.hidden = false;
+        return;
+      }
+
+      if (target.id === "top" || target.id === "intro") {
+        intro.hidden = false;
+        return;
+      }
+
+      intro.hidden = true;
+      chapters.forEach((chapter) => {
+        chapter.hidden = true;
+      });
+
+      if (glossary) {
+        glossary.hidden = true;
+      }
+
+      const chapterBlock = target.closest(".chapter-block");
+      if (chapterBlock) {
+        chapterBlock.hidden = false;
+        return;
+      }
+
+      if (target.classList.contains("chapter-block")) {
+        target.hidden = false;
+        return;
+      }
+
+      if (target.id === "glossary" || target.closest("#glossary")) {
+        if (glossary) {
+          glossary.hidden = false;
+        }
+      }
+    }
+
     function revealTargetFromHash() {
       if (!window.location.hash) {
+        setVisibleBodyForTarget(null);
         return;
       }
 
       const target = document.querySelector(window.location.hash);
       if (!target) {
+        setVisibleBodyForTarget(null);
         return;
       }
+
+      setVisibleBodyForTarget(target);
 
       let node = target;
       while (node) {
@@ -410,6 +465,7 @@
         buildRules(bodyLines, chapters);
         buildGlossary(glossaryLines);
         revealTargetFromHash();
+        bindTocChapterSelection();
       } catch (error) {
         document.getElementById("toc").innerHTML = `
           <p class="error">Could not load the table of contents.</p>
@@ -420,6 +476,25 @@
           <p>Open this folder through a local web server so the browser can fetch <code>${RULE_FILE}</code>.</p>
         `;
       }
+    }
+
+    function bindTocChapterSelection() {
+      document.querySelectorAll(".toc-group-title").forEach((summary) => {
+        summary.addEventListener("click", () => {
+          const chapterId = summary.parentElement.dataset.chapterId;
+          if (!chapterId) {
+            return;
+          }
+
+          window.setTimeout(() => {
+            if (window.location.hash === `#${chapterId}`) {
+              revealTargetFromHash();
+              return;
+            }
+            window.location.hash = chapterId;
+          }, 0);
+        });
+      });
     }
 
     window.addEventListener("hashchange", revealTargetFromHash);
