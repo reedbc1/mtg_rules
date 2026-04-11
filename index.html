@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magic Comprehensive Rules</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <p class="eyebrow">Magic: The Gathering</p>
+      <h1>Comprehensive Rules</h1>
+      <p class="hero-copy">
+        A readable web version of <a href="MagicCompRules.txt">MagicCompRules.txt</a> with a linked table of contents.
+      </p>
+    </header>
+
+    <div class="layout">
+      <aside class="toc-panel" aria-labelledby="toc-heading">
+        <div class="toc-inner">
+          <div class="toc-header">
+            <h2 id="toc-heading">Contents</h2>
+            <a class="top-link" href="#top">Top</a>
+          </div>
+          <nav id="toc" class="toc" aria-label="Table of contents">
+            <p class="loading">Loading contents…</p>
+          </nav>
+        </div>
+      </aside>
+
+      <main id="top" class="rules-panel">
+        <section id="intro" class="card intro-card" aria-live="polite">
+          <p class="loading">Loading rules text…</p>
+        </section>
+        <article id="rules" class="rules-content" aria-label="Magic Comprehensive Rules"></article>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const RULE_FILE = "MagicCompRules.txt";
+
+    function slugify(value) {
+      return value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    }
+
+    function makeSectionId(line) {
+      const match = line.match(/^(\d{3})\.\s+/);
+      if (match) {
+        return `rule-${match[1]}`;
+      }
+      if (line === "Glossary") {
+        return "glossary";
+      }
+      return slugify(line);
+    }
+
+    function makeChapterId(title) {
+      return `chapter-${slugify(title)}`;
+    }
+
+    function makeRuleLineId(ruleNumber) {
+      return `rule-${ruleNumber.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`;
+    }
+
+    function findNthIndex(lines, value, occurrence) {
+      let count = 0;
+      for (let index = 0; index < lines.length; index += 1) {
+        if (lines[index] === value) {
+          count += 1;
+          if (count === occurrence) {
+            return index;
+          }
+        }
+      }
+      return -1;
+    }
+
+    function createParagraph(text, className) {
+      const paragraph = document.createElement("p");
+      paragraph.textContent = text;
+      if (className) {
+        paragraph.className = className;
+      }
+      return paragraph;
+    }
+
+    function buildIntro(lines) {
+      const intro = document.getElementById("intro");
+      intro.replaceChildren();
+
+      const nonEmpty = lines.map((line) => line.trim()).filter(Boolean);
+      const [title, effectiveDate, ...rest] = nonEmpty;
+
+      if (title) {
+        const titleNode = document.createElement("h2");
+        titleNode.textContent = title;
+        intro.appendChild(titleNode);
+      }
+
+      if (effectiveDate) {
+        const effectiveNode = document.createElement("p");
+        effectiveNode.className = "effective-date";
+        effectiveNode.textContent = effectiveDate;
+        intro.appendChild(effectiveNode);
+      }
+
+      rest.forEach((line) => {
+        intro.appendChild(createParagraph(line));
+      });
+    }
+
+    function parseContents(lines) {
+      const chapters = [];
+      let currentChapter = null;
+      let reachedGlossary = false;
+
+      lines.forEach((rawLine) => {
+        const line = rawLine.trim();
+        if (!line || reachedGlossary) {
+          return;
+        }
+
+        if (/^\d+\.\s/.test(line) && !/^\d{3}\.\s/.test(line)) {
+          currentChapter = { title: line, sections: [] };
+          chapters.push(currentChapter);
+          return;
+        }
+
+        if (/^\d{3}\.\s/.test(line)) {
+          if (!currentChapter) {
+            currentChapter = { title: "Rules", sections: [] };
+            chapters.push(currentChapter);
+          }
+          currentChapter.sections.push({ title: line, id: makeSectionId(line) });
+          return;
+        }
+
+        if (line === "Glossary") {
+          chapters.push({ title: "Glossary", id: "glossary", standalone: true });
+          currentChapter = null;
+          reachedGlossary = true;
+        }
+      });
+
+      return chapters;
+    }
+
+    function buildContents(chapters) {
+      const toc = document.getElementById("toc");
+      toc.replaceChildren();
+
+      const fragment = document.createDocumentFragment();
+
+      chapters.forEach((chapter) => {
+        if (chapter.standalone) {
+          const link = document.createElement("a");
+          link.className = "toc-standalone-link";
+          link.href = `#${chapter.id}`;
+          link.textContent = chapter.title;
+          fragment.appendChild(link);
+          return;
+        }
+
+        const group = document.createElement("details");
+        group.className = "toc-group";
+
+        const heading = document.createElement("summary");
+        heading.className = "toc-group-title";
+        heading.textContent = chapter.title;
+        group.appendChild(heading);
+
+        const list = document.createElement("ul");
+        list.className = "toc-list";
+
+        chapter.sections.forEach((section) => {
+          const item = document.createElement("li");
+          const link = document.createElement("a");
+          link.href = `#${section.id}`;
+          link.textContent = section.title;
+          item.appendChild(link);
+          list.appendChild(item);
+        });
+
+        group.appendChild(list);
+        fragment.appendChild(group);
+      });
+
+      toc.appendChild(fragment);
+    }
+
+    function buildRules(lines, chapters) {
+      const rulesRoot = document.getElementById("rules");
+      rulesRoot.replaceChildren();
+
+      const fragment = document.createDocumentFragment();
+      const chapterStarts = new Map(
+        chapters
+          .filter((chapter) => Array.isArray(chapter.sections) && chapter.sections.length > 0)
+          .map((chapter) => [chapter.sections[0].title.slice(0, 3), chapter])
+      );
+
+      let currentChapter = null;
+      let currentSection = null;
+      let currentSectionBody = null;
+
+      function flushChapter() {
+        if (currentChapter) {
+          fragment.appendChild(currentChapter);
+          currentChapter = null;
+        }
+      }
+
+      function flushSection() {
+        if (currentSection) {
+          currentChapter.querySelector(".chapter-sections").appendChild(currentSection);
+          currentSection = null;
+          currentSectionBody = null;
+        }
+      }
+
+      lines.forEach((rawLine) => {
+        const line = rawLine.trim();
+
+        if (!line) {
+          return;
+        }
+
+        const sectionMatch = line.match(/^(\d{3})\.\s+(.+)$/);
+        if (sectionMatch) {
+          flushSection();
+
+          const [_, sectionNumber, sectionTitle] = sectionMatch;
+          const chapter = chapterStarts.get(sectionNumber);
+          if (chapter && (!currentChapter || currentChapter.id !== makeChapterId(chapter.title))) {
+            flushChapter();
+
+            currentChapter = document.createElement("details");
+            currentChapter.className = "chapter-block";
+            currentChapter.id = makeChapterId(chapter.title);
+
+            const chapterSummary = document.createElement("summary");
+            chapterSummary.className = "chapter-summary";
+
+            const chapterHeading = document.createElement("span");
+            chapterHeading.className = "chapter-heading";
+            chapterHeading.textContent = chapter.title;
+            chapterSummary.appendChild(chapterHeading);
+
+            currentChapter.appendChild(chapterSummary);
+
+            const chapterSections = document.createElement("div");
+            chapterSections.className = "chapter-sections";
+            currentChapter.appendChild(chapterSections);
+          }
+
+          currentSection = document.createElement("details");
+          currentSection.className = "card rule-section";
+          currentSection.id = `rule-${sectionNumber}`;
+
+          const summary = document.createElement("summary");
+          summary.className = "rule-section-summary";
+
+          const heading = document.createElement("span");
+          heading.className = "rule-section-heading";
+          heading.textContent = `${sectionNumber}. ${sectionTitle}`;
+          summary.appendChild(heading);
+
+          currentSection.appendChild(summary);
+
+          currentSectionBody = document.createElement("div");
+          currentSectionBody.className = "rule-section-body";
+          currentSection.appendChild(currentSectionBody);
+          return;
+        }
+
+        const ruleLineMatch = line.match(/^(\d+\.\d+[a-z]?\.?)\s+(.*)$/i);
+        if (ruleLineMatch && currentSectionBody) {
+          const [_, ruleNumber, ruleText] = ruleLineMatch;
+          const paragraph = document.createElement("p");
+          paragraph.className = "rule-line";
+          paragraph.id = makeRuleLineId(ruleNumber);
+
+          const number = document.createElement("span");
+          number.className = "rule-number";
+          number.textContent = ruleNumber;
+          paragraph.appendChild(number);
+          paragraph.append(` ${ruleText}`);
+          currentSectionBody.appendChild(paragraph);
+          return;
+        }
+
+        if (currentSectionBody) {
+          currentSectionBody.appendChild(createParagraph(line, "rule-note"));
+        }
+      });
+
+      flushSection();
+      flushChapter();
+      rulesRoot.appendChild(fragment);
+    }
+
+    function buildGlossary(lines) {
+      const rulesRoot = document.getElementById("rules");
+      const glossary = document.createElement("details");
+      glossary.className = "card glossary-section";
+      glossary.id = "glossary";
+
+      const heading = document.createElement("summary");
+      heading.className = "glossary-summary";
+
+      const title = document.createElement("span");
+      title.className = "glossary-heading";
+      title.textContent = "Glossary";
+      heading.appendChild(title);
+      glossary.appendChild(heading);
+
+      const glossaryBody = document.createElement("div");
+      glossaryBody.className = "glossary-body";
+      glossary.appendChild(glossaryBody);
+
+      let currentEntry = null;
+
+      function createEntry(term) {
+        const entry = document.createElement("section");
+        entry.className = "glossary-entry";
+        entry.id = `glossary-${slugify(term)}`;
+
+        const termHeading = document.createElement("h3");
+        termHeading.textContent = term;
+        entry.appendChild(termHeading);
+        return entry;
+      }
+
+      function isGlossaryTerm(line) {
+        return !/[.!?:;]$/.test(line) && !/^\d/.test(line);
+      }
+
+      lines.forEach((rawLine) => {
+        const line = rawLine.trim();
+        if (!line) {
+          return;
+        }
+
+        if (isGlossaryTerm(line)) {
+          currentEntry = createEntry(line);
+          glossaryBody.appendChild(currentEntry);
+          return;
+        }
+
+        if (!currentEntry) {
+          currentEntry = createEntry("Terms");
+          glossaryBody.appendChild(currentEntry);
+        }
+
+        currentEntry.appendChild(createParagraph(line));
+      });
+
+      rulesRoot.appendChild(glossary);
+    }
+
+    function revealTargetFromHash() {
+      if (!window.location.hash) {
+        return;
+      }
+
+      const target = document.querySelector(window.location.hash);
+      if (!target) {
+        return;
+      }
+
+      let node = target;
+      while (node) {
+        if (node.tagName === "DETAILS") {
+          node.open = true;
+        }
+        node = node.parentElement;
+      }
+    }
+
+    async function init() {
+      try {
+        const response = await fetch(RULE_FILE);
+        if (!response.ok) {
+          throw new Error(`Unable to load ${RULE_FILE} (${response.status})`);
+        }
+
+        const text = await response.text();
+        const lines = text.split(/\r?\n/);
+        const contentsIndex = lines.indexOf("Contents");
+        const bodyStartIndex = findNthIndex(lines, "100. General", 2);
+        const glossaryIndex = lines.lastIndexOf("Glossary");
+
+        if (contentsIndex === -1 || bodyStartIndex === -1 || glossaryIndex === -1) {
+          throw new Error("The rules file format was not recognized.");
+        }
+
+        const introLines = lines.slice(0, contentsIndex);
+        const contentsLines = lines.slice(contentsIndex + 1, bodyStartIndex);
+        const bodyLines = lines.slice(bodyStartIndex, glossaryIndex);
+        const glossaryLines = lines.slice(glossaryIndex + 1);
+
+        buildIntro(introLines);
+        const chapters = parseContents(contentsLines);
+        buildContents(chapters);
+        buildRules(bodyLines, chapters);
+        buildGlossary(glossaryLines);
+        revealTargetFromHash();
+      } catch (error) {
+        document.getElementById("toc").innerHTML = `
+          <p class="error">Could not load the table of contents.</p>
+        `;
+        document.getElementById("intro").innerHTML = `
+          <h2>Unable to load the rules text</h2>
+          <p class="error">${error.message}</p>
+          <p>Open this folder through a local web server so the browser can fetch <code>${RULE_FILE}</code>.</p>
+        `;
+      }
+    }
+
+    window.addEventListener("hashchange", revealTargetFromHash);
+
+    init();
+  </script>
+</body>
+</html>
