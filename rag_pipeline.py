@@ -11,9 +11,10 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
-
+from dotenv import load_dotenv
 from openai import OpenAI
 
+load_dotenv()
 
 TOP_LEVEL_RULE_RE = re.compile(r"^(?P<rule>\d{3})\. (?P<title>.+)$")
 SUBRULE_RE = re.compile(r"^(?P<rule_id>\d{3}\.\d+[a-z]?\.?)\s")
@@ -347,6 +348,68 @@ def search_index(index: dict, query: str, top_k: int) -> list[tuple[float, dict]
 
     scored_chunks.sort(key=lambda item: item[0], reverse=True)
     return scored_chunks[:top_k]
+
+
+def format_retrieval_context(results: list[tuple[float, dict]]) -> str:
+    sections = []
+    for rank, (score, chunk) in enumerate(results, start=1):
+        sections.append(
+            "\n".join(
+                [
+                    f"[Document {rank}]",
+                    f"score: {score:.4f}",
+                    f"id: {chunk['id']}",
+                    f"title: {chunk['title']}",
+                    f"source_line: {chunk['source_line']}",
+                    "content:",
+                    chunk["text"],
+                ]
+            )
+        )
+    return "\n\n".join(sections)
+
+
+def answer_query(
+    index: dict,
+    query: str,
+    top_k: int,
+    chat_model: str = "gpt-4o",
+    conversation_history: list[dict[str, str]] | None = None,
+) -> tuple[str, list[tuple[float, dict]]]:
+    results = search_index(index=index, query=query, top_k=top_k)
+    context = format_retrieval_context(results)
+
+    system_prompt = (
+        "You are an MTG Comprehensive Rules assistant. "
+        "Answer the user's question using the retrieved rules context first. "
+        "Be precise, avoid inventing rules, and say when the retrieved context is insufficient. "
+        "When helpful, cite the retrieved rule titles or glossary entries in plain language."
+    )
+
+    messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+
+    if conversation_history:
+        messages.extend(conversation_history)
+
+    messages.append(
+        {
+            "role": "user",
+            "content": (
+                "Retrieved MTG rules context:\n"
+                f"{context}\n\n"
+                "User question:\n"
+                f"{query}"
+            ),
+        }
+    )
+
+    client = get_client()
+    response = client.chat.completions.create(
+        model=chat_model,
+        messages=messages,
+    )
+    answer = response.choices[0].message.content or ""
+    return answer, results
 
 
 def print_chunk_report(chunks: list[dict], preview_count: int) -> None:
