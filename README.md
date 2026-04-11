@@ -1,6 +1,16 @@
 # mtg_rag
 Retrieval augmented generation for MTG comprehensive rules.
 
+## Static rules viewer
+
+`index.html` provides a readable browser version of `MagicCompRules.txt` with:
+
+- a linked table of contents
+- anchored chapter and rule navigation
+- client-side keyword search across rules text and glossary entries
+
+Open the folder through a local web server so the browser can fetch `MagicCompRules.txt` correctly.
+
 ## RAG pipeline
 
 `rag_pipeline.py` chunks `MagicCompRules.txt`, creates OpenAI embeddings for each chunk, saves a local index, and searches that index by semantic similarity.

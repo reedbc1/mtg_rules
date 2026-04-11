@@ -12,7 +12,7 @@
       <p class="eyebrow">Magic: The Gathering</p>
       <h1>Comprehensive Rules</h1>
       <p class="hero-copy">
-        A readable web version of <a href="MagicCompRules.txt">MagicCompRules.txt</a> with a linked table of contents.
+        A readable web version of MTG comprehensive rules.
       </p>
     </header>
 
@@ -30,6 +30,29 @@
       </aside>
 
       <main id="top" class="rules-panel">
+        <section class="card search-card" aria-label="Keyword search">
+          <div class="search-header">
+            <p id="search-status" class="search-status">Loading search index…</p>
+          </div>
+
+          <form id="search-form" class="search-form" role="search">
+            <label class="sr-only" for="keyword-search">Search the rules text</label>
+            <input
+              id="keyword-search"
+              class="search-input"
+              type="search"
+              name="query"
+              placeholder="Search"
+              autocomplete="off"
+              spellcheck="false"
+              disabled
+            >
+            <button class="search-button" type="submit" disabled>Search</button>
+          </form>
+
+          <div id="search-results" class="search-results" aria-live="polite"></div>
+        </section>
+
         <section id="intro" class="card intro-card" aria-live="polite">
           <p class="loading">Loading rules text…</p>
         </section>
@@ -40,6 +63,14 @@
 
   <script>
     const RULE_FILE = "MagicCompRules.txt";
+    const SEARCH_RESULT_LIMIT = 75;
+    const searchState = {
+      records: [],
+      recordsById: new Map(),
+      latestResults: [],
+      activeTerms: [],
+      selectedTargetId: "",
+    };
 
     function slugify(value) {
       return value
@@ -87,6 +118,98 @@
         paragraph.className = className;
       }
       return paragraph;
+    }
+
+    function normalizeSearchText(value) {
+      return value.toLowerCase().replace(/\s+/g, " ").trim();
+    }
+
+    function parseSearchTerms(query) {
+      return query
+        .toLowerCase()
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+    }
+
+    function escapeHtml(value) {
+      return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function escapeRegExp(value) {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function buildSearchRegex(terms) {
+      if (!terms.length) {
+        return null;
+      }
+
+      const pattern = terms
+        .slice()
+        .sort((left, right) => right.length - left.length)
+        .map((term) => escapeRegExp(term))
+        .join("|");
+      return new RegExp(`(${pattern})`, "gi");
+    }
+
+    function highlightMatchesInText(text, terms) {
+      const regex = buildSearchRegex(terms);
+      if (!regex) {
+        return escapeHtml(text);
+      }
+
+      const matches = Array.from(text.matchAll(regex));
+      if (!matches.length) {
+        return escapeHtml(text);
+      }
+
+      let html = "";
+      let lastIndex = 0;
+      matches.forEach((match) => {
+        const index = match.index ?? 0;
+        html += escapeHtml(text.slice(lastIndex, index));
+        html += `<mark class="search-highlight">${escapeHtml(match[0])}</mark>`;
+        lastIndex = index + match[0].length;
+      });
+      html += escapeHtml(text.slice(lastIndex));
+      return html;
+    }
+
+    function createSearchSnippet(text, terms, maxLength = 220) {
+      if (!text) {
+        return "";
+      }
+
+      const normalizedText = text.toLowerCase();
+      const firstMatchIndex = terms.reduce((closest, term) => {
+        const matchIndex = normalizedText.indexOf(term);
+        if (matchIndex === -1) {
+          return closest;
+        }
+        return closest === -1 ? matchIndex : Math.min(closest, matchIndex);
+      }, -1);
+
+      const focusIndex = firstMatchIndex === -1 ? 0 : firstMatchIndex;
+      const start = Math.max(0, focusIndex - 80);
+      const end = Math.min(text.length, start + maxLength);
+      const snippet = text.slice(start, end).trim();
+      const prefix = start > 0 ? "..." : "";
+      const suffix = end < text.length ? "..." : "";
+      return highlightMatchesInText(`${prefix}${snippet}${suffix}`, terms);
+    }
+
+    function createSearchRecord(records, data) {
+      records.push({
+        ...data,
+        order: records.length,
+        searchText: normalizeSearchText(data.searchText),
+      });
     }
 
     function buildIntro(lines) {
@@ -192,6 +315,7 @@
       rulesRoot.replaceChildren();
 
       const fragment = document.createDocumentFragment();
+      const records = [];
       const chapterStarts = new Map(
         chapters
           .filter((chapter) => Array.isArray(chapter.sections) && chapter.sections.length > 0)
@@ -199,8 +323,11 @@
       );
 
       let currentChapter = null;
+      let currentChapterTitle = "";
       let currentSection = null;
       let currentSectionBody = null;
+      let currentSectionTitle = "";
+      let currentNoteCount = 0;
 
       function flushChapter() {
         if (currentChapter) {
@@ -232,6 +359,7 @@
           const chapter = chapterStarts.get(sectionNumber);
           if (chapter && (!currentChapter || currentChapter.id !== makeChapterId(chapter.title))) {
             flushChapter();
+            currentChapterTitle = chapter.title;
 
             currentChapter = document.createElement("details");
             currentChapter.className = "chapter-block";
@@ -255,6 +383,8 @@
           currentSection = document.createElement("details");
           currentSection.className = "card rule-section";
           currentSection.id = `rule-${sectionNumber}`;
+          currentSectionTitle = `${sectionNumber}. ${sectionTitle}`;
+          currentNoteCount = 0;
 
           const summary = document.createElement("summary");
           summary.className = "rule-section-summary";
@@ -269,6 +399,16 @@
           currentSectionBody = document.createElement("div");
           currentSectionBody.className = "rule-section-body";
           currentSection.appendChild(currentSectionBody);
+
+          createSearchRecord(records, {
+            category: "Rule section",
+            title: currentSectionTitle,
+            subtitle: currentChapterTitle || "Rules",
+            text: currentSectionTitle,
+            searchText: `${currentChapterTitle} ${currentSectionTitle}`,
+            targetId: currentSection.id,
+            element: summary,
+          });
           return;
         }
 
@@ -285,17 +425,41 @@
           paragraph.appendChild(number);
           paragraph.append(` ${ruleText}`);
           currentSectionBody.appendChild(paragraph);
+
+          createSearchRecord(records, {
+            category: "Rule line",
+            title: `${ruleNumber} ${ruleText}`,
+            subtitle: currentSectionTitle,
+            text: `${ruleNumber} ${ruleText}`,
+            searchText: `${currentChapterTitle} ${currentSectionTitle} ${ruleNumber} ${ruleText}`,
+            targetId: paragraph.id,
+            element: paragraph,
+          });
           return;
         }
 
         if (currentSectionBody) {
-          currentSectionBody.appendChild(createParagraph(line, "rule-note"));
+          currentNoteCount += 1;
+          const note = createParagraph(line, "rule-note");
+          note.id = `${currentSection.id}-note-${currentNoteCount}`;
+          currentSectionBody.appendChild(note);
+
+          createSearchRecord(records, {
+            category: "Rule note",
+            title: line,
+            subtitle: currentSectionTitle,
+            text: line,
+            searchText: `${currentChapterTitle} ${currentSectionTitle} ${line}`,
+            targetId: note.id,
+            element: note,
+          });
         }
       });
 
       flushSection();
       flushChapter();
       rulesRoot.appendChild(fragment);
+      return records;
     }
 
     function buildGlossary(lines) {
@@ -316,6 +480,7 @@
       const glossaryBody = document.createElement("div");
       glossaryBody.className = "glossary-body";
       glossary.appendChild(glossaryBody);
+      const records = [];
 
       function createEntry(term) {
         const entry = document.createElement("section");
@@ -389,9 +554,115 @@
         descriptionLines.forEach((descriptionLine) => {
           entry.appendChild(createParagraph(descriptionLine));
         });
+
+        createSearchRecord(records, {
+          category: "Glossary",
+          title: term || "Terms",
+          subtitle: "Glossary entry",
+          text: `${term || "Terms"} ${descriptionLines.join(" ")}`.trim(),
+          searchText: `${term || "Terms"} ${descriptionLines.join(" ")}`.trim(),
+          targetId: entry.id,
+          element: entry,
+        });
       });
 
       rulesRoot.appendChild(glossary);
+      return records;
+    }
+
+    function clearActiveDocumentHighlights() {
+      document.querySelectorAll("#intro mark.search-highlight, #rules mark.search-highlight").forEach((mark) => {
+        const parent = mark.parentNode;
+        if (!parent) {
+          return;
+        }
+
+        parent.replaceChild(document.createTextNode(mark.textContent || ""), mark);
+        parent.normalize();
+      });
+    }
+
+    function highlightElementText(element, terms) {
+      const regex = buildSearchRegex(terms);
+      if (!regex || !element) {
+        return;
+      }
+
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          if (!node.nodeValue || !node.nodeValue.trim()) {
+            return NodeFilter.FILTER_REJECT;
+          }
+
+          const parent = node.parentElement;
+          if (!parent || parent.closest("mark.search-highlight")) {
+            return NodeFilter.FILTER_REJECT;
+          }
+
+          if (["SCRIPT", "STYLE"].includes(parent.tagName)) {
+            return NodeFilter.FILTER_REJECT;
+          }
+
+          return NodeFilter.FILTER_ACCEPT;
+        },
+      });
+
+      const textNodes = [];
+      let currentNode = walker.nextNode();
+      while (currentNode) {
+        textNodes.push(currentNode);
+        currentNode = walker.nextNode();
+      }
+
+      textNodes.forEach((node) => {
+        regex.lastIndex = 0;
+        if (!regex.test(node.nodeValue)) {
+          return;
+        }
+
+        regex.lastIndex = 0;
+        const fragment = document.createDocumentFragment();
+        let lastIndex = 0;
+
+        Array.from(node.nodeValue.matchAll(regex)).forEach((match) => {
+          const index = match.index ?? 0;
+          if (index > lastIndex) {
+            fragment.appendChild(document.createTextNode(node.nodeValue.slice(lastIndex, index)));
+          }
+
+          const mark = document.createElement("mark");
+          mark.className = "search-highlight";
+          mark.textContent = match[0];
+          fragment.appendChild(mark);
+          lastIndex = index + match[0].length;
+        });
+
+        if (lastIndex < node.nodeValue.length) {
+          fragment.appendChild(document.createTextNode(node.nodeValue.slice(lastIndex)));
+        }
+
+        node.parentNode.replaceChild(fragment, node);
+      });
+    }
+
+    function applyActiveDocumentHighlights() {
+      clearActiveDocumentHighlights();
+
+      if (!searchState.activeTerms.length) {
+        return;
+      }
+
+      const targetId = searchState.selectedTargetId || window.location.hash.replace(/^#/, "");
+      if (!targetId) {
+        return;
+      }
+
+      const record = searchState.recordsById.get(targetId);
+      if (!record) {
+        return;
+      }
+
+      highlightElementText(record.element, searchState.activeTerms);
     }
 
     function setVisibleBodyForTarget(target) {
@@ -471,6 +742,232 @@
         }
         node = node.parentElement;
       }
+
+      applyActiveDocumentHighlights();
+    }
+
+    function closeAllDropdowns() {
+      document.querySelectorAll(".chapter-block, .rule-section, .glossary-section").forEach((section) => {
+        section.open = false;
+      });
+    }
+
+    function getCurrentPageTopTarget() {
+      const hashTarget = window.location.hash ? document.querySelector(window.location.hash) : null;
+      const currentTarget = hashTarget || document.getElementById("top");
+
+      if (!currentTarget) {
+        return document.getElementById("top");
+      }
+
+      const chapterBlock = currentTarget.closest(".chapter-block");
+      if (chapterBlock) {
+        return chapterBlock;
+      }
+
+      const glossarySection = currentTarget.closest("#glossary");
+      if (glossarySection) {
+        return glossarySection;
+      }
+
+      if (currentTarget.id === "glossary") {
+        return currentTarget;
+      }
+
+      return document.getElementById("top");
+    }
+
+    function jumpToHash(hash) {
+      const targetId = hash.replace(/^#/, "");
+      const target = targetId ? document.getElementById(targetId) : null;
+      if (!target) {
+        return;
+      }
+
+      const root = document.documentElement;
+      const previousScrollBehavior = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+
+      history.pushState(null, "", hash);
+      revealTargetFromHash();
+      target.scrollIntoView({ behavior: "auto", block: "start" });
+
+      window.setTimeout(() => {
+        root.style.scrollBehavior = previousScrollBehavior;
+      }, 0);
+    }
+
+    function resetToTop() {
+      const pageTarget = getCurrentPageTopTarget();
+      const scrollTarget = document.getElementById("keyword-search") || pageTarget;
+      if (!pageTarget || !scrollTarget) {
+        return;
+      }
+
+      closeAllDropdowns();
+
+      const root = document.documentElement;
+      const previousScrollBehavior = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+
+      history.pushState(null, "", `#${pageTarget.id}`);
+      revealTargetFromHash();
+      scrollTarget.scrollIntoView({ behavior: "auto", block: "start" });
+
+      window.setTimeout(() => {
+        root.style.scrollBehavior = previousScrollBehavior;
+      }, 0);
+    }
+
+    function rankSearchRecord(record, query, terms) {
+      let score = 0;
+      if (record.searchText.includes(normalizeSearchText(query))) {
+        score += 10;
+      }
+
+      terms.forEach((term) => {
+        const matches = record.searchText.split(term).length - 1;
+        score += matches;
+      });
+
+      if (record.category === "Glossary") {
+        score += 2;
+      }
+
+      if (record.category === "Rule section") {
+        score += 1;
+      }
+
+      return score;
+    }
+
+    function searchRecords(query) {
+      const terms = parseSearchTerms(query);
+      if (!terms.length) {
+        return [];
+      }
+
+      return searchState.records
+        .filter((record) => terms.every((term) => record.searchText.includes(term)))
+        .map((record) => ({
+          ...record,
+          score: rankSearchRecord(record, query, terms),
+        }))
+        .sort((left, right) => right.score - left.score || left.order - right.order);
+    }
+
+    function renderSearchResults(results, query, terms) {
+      const resultsRoot = document.getElementById("search-results");
+      const status = document.getElementById("search-status");
+
+      if (!query.trim()) {
+        status.textContent = "";
+        resultsRoot.replaceChildren();
+        return;
+      }
+
+      if (!results.length) {
+        status.textContent = `No matches for "${query}".`;
+        resultsRoot.innerHTML = `
+          <p class="search-empty">No rules text or glossary entries matched that search.</p>
+        `;
+        return;
+      }
+
+      const shownResults = results.slice(0, SEARCH_RESULT_LIMIT);
+      const resultLabel = shownResults.length === results.length
+        ? `${results.length} matches for "${query}".`
+        : `Showing ${shownResults.length} of ${results.length} matches for "${query}".`;
+      status.textContent = resultLabel;
+
+      const fragment = document.createDocumentFragment();
+      shownResults.forEach((result) => {
+        const link = document.createElement("a");
+        link.className = "search-result";
+        link.href = `#${result.targetId}`;
+
+        const meta = document.createElement("span");
+        meta.className = "search-result-meta";
+        meta.textContent = result.category;
+        link.appendChild(meta);
+
+        const title = document.createElement("strong");
+        title.className = "search-result-title";
+        title.innerHTML = highlightMatchesInText(result.title, terms);
+        link.appendChild(title);
+
+        const subtitle = document.createElement("span");
+        subtitle.className = "search-result-subtitle";
+        subtitle.innerHTML = escapeHtml(result.subtitle);
+        link.appendChild(subtitle);
+
+        const snippet = document.createElement("span");
+        snippet.className = "search-result-snippet";
+        snippet.innerHTML = createSearchSnippet(result.text, terms);
+        link.appendChild(snippet);
+
+        link.addEventListener("click", (event) => {
+          event.preventDefault();
+          searchState.selectedTargetId = result.targetId;
+          jumpToHash(`#${result.targetId}`);
+          hideSearchResults();
+        });
+
+        fragment.appendChild(link);
+      });
+
+      resultsRoot.replaceChildren(fragment);
+    }
+
+    function runSearch(query) {
+      searchState.selectedTargetId = "";
+      searchState.activeTerms = parseSearchTerms(query);
+      searchState.latestResults = searchRecords(query);
+      renderSearchResults(searchState.latestResults, query, searchState.activeTerms);
+      applyActiveDocumentHighlights();
+    }
+
+    function hideSearchResults() {
+      document.getElementById("search-results").replaceChildren();
+    }
+
+    function resetSearchDisplay(query) {
+      searchState.selectedTargetId = "";
+      searchState.activeTerms = [];
+      searchState.latestResults = [];
+      hideSearchResults();
+      applyActiveDocumentHighlights();
+
+      const status = document.getElementById("search-status");
+      if (!query.trim()) {
+        status.textContent = "";
+        return;
+      }
+
+      status.textContent = 'Press "Search" to see matches.';
+    }
+
+    function initializeSearch(records) {
+      searchState.records = records;
+      searchState.recordsById = new Map(records.map((record) => [record.targetId, record]));
+
+      const searchForm = document.getElementById("search-form");
+      const searchInput = document.getElementById("keyword-search");
+      const submitButton = searchForm.querySelector('button[type="submit"]');
+
+      searchInput.disabled = false;
+      submitButton.disabled = false;
+
+      searchInput.addEventListener("input", () => {
+        resetSearchDisplay(searchInput.value);
+      });
+
+      searchForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        runSearch(searchInput.value);
+      });
+
+      resetSearchDisplay("");
     }
 
     async function init() {
@@ -498,20 +995,44 @@
         buildIntro(introLines);
         const chapters = parseContents(contentsLines);
         buildContents(chapters);
-        buildRules(bodyLines, chapters);
-        buildGlossary(glossaryLines);
+        const ruleRecords = buildRules(bodyLines, chapters);
+        const glossaryRecords = buildGlossary(glossaryLines);
+        initializeSearch([...ruleRecords, ...glossaryRecords]);
+        bindRuleSectionAccordion();
         revealTargetFromHash();
         bindGlossaryNavInstantJump();
       } catch (error) {
         document.getElementById("toc").innerHTML = `
           <p class="error">Could not load the table of contents.</p>
         `;
+        document.getElementById("search-status").textContent = "Search is unavailable.";
         document.getElementById("intro").innerHTML = `
           <h2>Unable to load the rules text</h2>
           <p class="error">${error.message}</p>
           <p>Open this folder through a local web server so the browser can fetch <code>${RULE_FILE}</code>.</p>
         `;
       }
+    }
+
+    function bindRuleSectionAccordion() {
+      document.querySelectorAll(".rule-section").forEach((section) => {
+        section.addEventListener("toggle", () => {
+          if (!section.open) {
+            return;
+          }
+
+          const sectionGroup = section.closest(".chapter-sections");
+          if (!sectionGroup) {
+            return;
+          }
+
+          sectionGroup.querySelectorAll(".rule-section").forEach((peerSection) => {
+            if (peerSection !== section) {
+              peerSection.open = false;
+            }
+          });
+        });
+      });
     }
 
     function bindGlossaryNavInstantJump() {
@@ -524,24 +1045,26 @@
           }
 
           event.preventDefault();
-
-          const root = document.documentElement;
-          const previousScrollBehavior = root.style.scrollBehavior;
-          root.style.scrollBehavior = "auto";
-
-          history.pushState(null, "", hash);
-          revealTargetFromHash();
-          target.scrollIntoView({ behavior: "auto", block: "start" });
-
-          window.setTimeout(() => {
-            root.style.scrollBehavior = previousScrollBehavior;
-          }, 0);
+          jumpToHash(hash);
         });
+      });
+    }
+
+    function bindTopLinkReset() {
+      const topLink = document.querySelector(".top-link");
+      if (!topLink) {
+        return;
+      }
+
+      topLink.addEventListener("click", (event) => {
+        event.preventDefault();
+        resetToTop();
       });
     }
 
     window.addEventListener("hashchange", revealTargetFromHash);
 
+    bindTopLinkReset();
     init();
   </script>
 </body>
