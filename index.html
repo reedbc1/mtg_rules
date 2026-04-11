@@ -324,8 +324,6 @@
       glossaryBody.className = "glossary-body";
       glossary.appendChild(glossaryBody);
 
-      let currentEntry = null;
-
       function createEntry(term) {
         const entry = document.createElement("section");
         entry.className = "glossary-entry";
@@ -337,28 +335,67 @@
         return entry;
       }
 
-      function isGlossaryTerm(line) {
-        return !/[.!?:;]$/.test(line) && !/^\d/.test(line);
-      }
+      const entries = [];
+      let currentBlock = [];
 
       lines.forEach((rawLine) => {
         const line = rawLine.trim();
         if (!line) {
+          if (currentBlock.length > 0) {
+            entries.push(currentBlock);
+            currentBlock = [];
+          }
           return;
         }
 
-        if (isGlossaryTerm(line)) {
-          currentEntry = createEntry(line);
-          glossaryBody.appendChild(currentEntry);
+        currentBlock.push(line);
+      });
+
+      if (currentBlock.length > 0) {
+        entries.push(currentBlock);
+      }
+
+      const letterTargets = new Map();
+      entries.forEach((entryLines) => {
+        const term = entryLines[0] || "";
+        const firstLetter = term.charAt(0).toUpperCase();
+        if (/^[A-Z]$/.test(firstLetter) && !letterTargets.has(firstLetter)) {
+          letterTargets.set(firstLetter, `glossary-${slugify(term)}`);
+        }
+      });
+
+      const glossaryNav = document.createElement("nav");
+      glossaryNav.className = "glossary-nav";
+      glossaryNav.setAttribute("aria-label", "Glossary A to Z");
+
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach((letter) => {
+        const targetId = letterTargets.get(letter);
+        if (targetId) {
+          const link = document.createElement("a");
+          link.className = "glossary-nav-link";
+          link.href = `#${targetId}`;
+          link.textContent = letter;
+          glossaryNav.appendChild(link);
           return;
         }
 
-        if (!currentEntry) {
-          currentEntry = createEntry("Terms");
-          glossaryBody.appendChild(currentEntry);
-        }
+        const placeholder = document.createElement("span");
+        placeholder.className = "glossary-nav-link is-disabled";
+        placeholder.textContent = letter;
+        placeholder.setAttribute("aria-hidden", "true");
+        glossaryNav.appendChild(placeholder);
+      });
 
-        currentEntry.appendChild(createParagraph(line));
+      glossaryBody.appendChild(glossaryNav);
+
+      entries.forEach((entryLines) => {
+        const [term, ...descriptionLines] = entryLines;
+        const entry = createEntry(term || "Terms");
+        glossaryBody.appendChild(entry);
+
+        descriptionLines.forEach((descriptionLine) => {
+          entry.appendChild(createParagraph(descriptionLine));
+        });
       });
 
       rulesRoot.appendChild(glossary);
@@ -466,6 +503,8 @@
         buildGlossary(glossaryLines);
         revealTargetFromHash();
         bindTocChapterSelection();
+        bindTocAccordionBehavior();
+        bindGlossaryNavInstantJump();
       } catch (error) {
         document.getElementById("toc").innerHTML = `
           <p class="error">Could not load the table of contents.</p>
@@ -492,6 +531,49 @@
               return;
             }
             window.location.hash = chapterId;
+          }, 0);
+        });
+      });
+    }
+
+    function bindTocAccordionBehavior() {
+      const groups = Array.from(document.querySelectorAll(".toc-group"));
+      groups.forEach((group) => {
+        group.addEventListener("toggle", () => {
+          if (!group.open) {
+            return;
+          }
+
+          groups.forEach((otherGroup) => {
+            if (otherGroup !== group) {
+              otherGroup.open = false;
+            }
+          });
+        });
+      });
+    }
+
+    function bindGlossaryNavInstantJump() {
+      document.querySelectorAll(".glossary-nav-link[href^='#']").forEach((link) => {
+        link.addEventListener("click", (event) => {
+          const hash = link.getAttribute("href");
+          const target = hash ? document.querySelector(hash) : null;
+          if (!target) {
+            return;
+          }
+
+          event.preventDefault();
+
+          const root = document.documentElement;
+          const previousScrollBehavior = root.style.scrollBehavior;
+          root.style.scrollBehavior = "auto";
+
+          history.pushState(null, "", hash);
+          revealTargetFromHash();
+          target.scrollIntoView({ behavior: "auto", block: "start" });
+
+          window.setTimeout(() => {
+            root.style.scrollBehavior = previousScrollBehavior;
           }, 0);
         });
       });
