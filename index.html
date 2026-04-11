@@ -177,29 +177,11 @@
           return;
         }
 
-        const group = document.createElement("details");
-        group.className = "toc-group";
-        group.dataset.chapterId = makeChapterId(chapter.title);
-
-        const heading = document.createElement("summary");
-        heading.className = "toc-group-title";
-        heading.textContent = chapter.title;
-        group.appendChild(heading);
-
-        const list = document.createElement("ul");
-        list.className = "toc-list";
-
-        chapter.sections.forEach((section) => {
-          const item = document.createElement("li");
-          const link = document.createElement("a");
-          link.href = `#${section.id}`;
-          link.textContent = section.title;
-          item.appendChild(link);
-          list.appendChild(item);
-        });
-
-        group.appendChild(list);
-        fragment.appendChild(group);
+        const link = document.createElement("a");
+        link.className = "toc-chapter-link";
+        link.href = `#${makeChapterId(chapter.title)}`;
+        link.textContent = chapter.title;
+        fragment.appendChild(link);
       });
 
       toc.appendChild(fragment);
@@ -519,8 +501,6 @@
         buildRules(bodyLines, chapters);
         buildGlossary(glossaryLines);
         revealTargetFromHash();
-        bindTocChapterSelection();
-        bindTocAccordionBehavior();
         bindGlossaryNavInstantJump();
       } catch (error) {
         document.getElementById("toc").innerHTML = `
@@ -532,42 +512,6 @@
           <p>Open this folder through a local web server so the browser can fetch <code>${RULE_FILE}</code>.</p>
         `;
       }
-    }
-
-    function bindTocChapterSelection() {
-      document.querySelectorAll(".toc-group-title").forEach((summary) => {
-        summary.addEventListener("click", () => {
-          const chapterId = summary.parentElement.dataset.chapterId;
-          if (!chapterId) {
-            return;
-          }
-
-          window.setTimeout(() => {
-            if (window.location.hash === `#${chapterId}`) {
-              revealTargetFromHash();
-              return;
-            }
-            window.location.hash = chapterId;
-          }, 0);
-        });
-      });
-    }
-
-    function bindTocAccordionBehavior() {
-      const groups = Array.from(document.querySelectorAll(".toc-group"));
-      groups.forEach((group) => {
-        group.addEventListener("toggle", () => {
-          if (!group.open) {
-            return;
-          }
-
-          groups.forEach((otherGroup) => {
-            if (otherGroup !== group) {
-              otherGroup.open = false;
-            }
-          });
-        });
-      });
     }
 
     function bindGlossaryNavInstantJump() {
