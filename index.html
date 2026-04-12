@@ -912,6 +912,28 @@
       }, 0);
     }
 
+    function navigateHeroToIntro() {
+      const hero = document.getElementById("page-top");
+      const intro = document.getElementById("intro");
+      if (!hero || !intro) {
+        return;
+      }
+
+      const root = document.documentElement;
+      const previousScrollBehavior = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+
+      history.pushState(null, "", "#intro");
+      setVisibleBodyForTarget(intro);
+      clearSearchIfNavigatingAway(intro);
+      applyActiveDocumentHighlights();
+      hero.scrollIntoView({ behavior: "auto", block: "start" });
+
+      window.setTimeout(() => {
+        root.style.scrollBehavior = previousScrollBehavior;
+      }, 0);
+    }
+
     function rankSearchRecord(record, query, terms) {
       let score = 0;
       if (record.searchText.includes(normalizeSearchText(query))) {
@@ -1277,12 +1299,28 @@
       });
     }
 
+    function bindHeroIntroNavigation() {
+      const hero = document.getElementById("page-top");
+      if (!hero) {
+        return;
+      }
+
+      hero.addEventListener("click", (event) => {
+        if (event.target instanceof Element && event.target.closest("a, button, input, textarea, select")) {
+          return;
+        }
+
+        navigateHeroToIntro();
+      });
+    }
+
     window.addEventListener("hashchange", revealTargetFromHash);
     window.addEventListener("resize", syncMobileSearchPlacement);
     window.addEventListener("resize", syncMobileContentsTopLinkVisibility);
     window.addEventListener("resize", syncMobileTocCollapseState);
 
     bindMobileTocToggle();
+    bindHeroIntroNavigation();
     bindTopLinkReset();
     syncMobileSearchPlacement();
     syncMobileContentsTopLinkVisibility();
