@@ -17,10 +17,20 @@
     </header>
 
     <div class="layout">
+      <div id="mobile-search-slot" class="mobile-search-slot"></div>
       <aside class="toc-panel" aria-labelledby="toc-heading">
         <div class="toc-inner">
           <div class="toc-header">
             <h2 id="toc-heading">Contents</h2>
+            <button
+              id="toc-toggle"
+              class="toc-toggle"
+              type="button"
+              aria-expanded="true"
+              aria-controls="toc"
+            >
+              Collapse
+            </button>
             <a class="top-link" href="#page-top">Top</a>
           </div>
           <nav id="toc" class="toc" aria-label="Table of contents">
@@ -28,8 +38,6 @@
           </nav>
         </div>
       </aside>
-
-      <div id="mobile-search-slot" class="mobile-search-slot"></div>
 
       <main id="top" class="rules-panel">
         <div id="search-card-home"></div>
@@ -1217,6 +1225,49 @@
       topLink.tabIndex = shouldHideOnMobile ? -1 : 0;
     }
 
+    function syncMobileTocCollapseState() {
+      const toc = document.getElementById("toc");
+      const toggle = document.getElementById("toc-toggle");
+      const isMobile = window.matchMedia("(max-width: 980px)").matches;
+      if (!toc || !toggle) {
+        return;
+      }
+
+      if (!isMobile) {
+        toc.hidden = false;
+        toggle.hidden = true;
+        toggle.setAttribute("aria-expanded", "true");
+        toggle.textContent = "Collapse";
+        return;
+      }
+
+      toggle.hidden = false;
+      if (!toggle.dataset.initialized) {
+        toc.hidden = false;
+        toggle.dataset.initialized = "true";
+      }
+      toggle.setAttribute("aria-expanded", toc.hidden ? "false" : "true");
+      toggle.textContent = toc.hidden ? "Expand" : "Collapse";
+    }
+
+    function bindMobileTocToggle() {
+      const toc = document.getElementById("toc");
+      const toggle = document.getElementById("toc-toggle");
+      if (!toc || !toggle) {
+        return;
+      }
+
+      toggle.addEventListener("click", () => {
+        if (!window.matchMedia("(max-width: 980px)").matches) {
+          return;
+        }
+
+        toc.hidden = !toc.hidden;
+        toggle.setAttribute("aria-expanded", toc.hidden ? "false" : "true");
+        toggle.textContent = toc.hidden ? "Expand" : "Collapse";
+      });
+    }
+
     function bindTopLinkReset() {
       document.querySelectorAll(".top-link, .mobile-top-link").forEach((topLink) => {
         topLink.addEventListener("click", (event) => {
@@ -1229,10 +1280,13 @@
     window.addEventListener("hashchange", revealTargetFromHash);
     window.addEventListener("resize", syncMobileSearchPlacement);
     window.addEventListener("resize", syncMobileContentsTopLinkVisibility);
+    window.addEventListener("resize", syncMobileTocCollapseState);
 
+    bindMobileTocToggle();
     bindTopLinkReset();
     syncMobileSearchPlacement();
     syncMobileContentsTopLinkVisibility();
+    syncMobileTocCollapseState();
     init();
   </script>
 </body>

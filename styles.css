@@ -124,7 +124,8 @@ code {
 }
 
 .mobile-search-slot:empty,
-.mobile-top-link {
+.mobile-top-link,
+.toc-toggle {
   display: none;
 }
 
@@ -165,6 +166,17 @@ code {
 .top-link {
   font-size: 0.95rem;
   font-weight: 700;
+}
+
+.toc-toggle {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .toc {
@@ -614,6 +626,17 @@ code {
   .mobile-search-slot {
     display: block;
     margin-bottom: 1rem;
+  }
+
+  .toc-header {
+    flex-wrap: wrap;
+  }
+
+  .toc-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem 0.8rem;
   }
 
   .toc-panel {
