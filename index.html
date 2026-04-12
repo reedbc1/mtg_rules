@@ -8,7 +8,7 @@
 </head>
 <body>
   <div class="page-shell">
-    <header class="hero">
+    <header id="page-top" class="hero">
       <p class="eyebrow">Magic: The Gathering</p>
       <h1>Comprehensive Rules</h1>
       <p class="hero-copy">
@@ -21,7 +21,7 @@
         <div class="toc-inner">
           <div class="toc-header">
             <h2 id="toc-heading">Contents</h2>
-            <a class="top-link" href="#top">Top</a>
+            <a class="top-link" href="#page-top">Top</a>
           </div>
           <nav id="toc" class="toc" aria-label="Table of contents">
             <p class="loading">Loading contents…</p>
@@ -683,7 +683,7 @@
         return;
       }
 
-      if (target.id === "top") {
+      if (target.id === "top" || target.id === "page-top") {
         intro.hidden = false;
         return;
       }
@@ -746,37 +746,6 @@
       applyActiveDocumentHighlights();
     }
 
-    function closeAllDropdowns() {
-      document.querySelectorAll(".chapter-block, .rule-section, .glossary-section").forEach((section) => {
-        section.open = false;
-      });
-    }
-
-    function getCurrentPageTopTarget() {
-      const hashTarget = window.location.hash ? document.querySelector(window.location.hash) : null;
-      const currentTarget = hashTarget || document.getElementById("top");
-
-      if (!currentTarget) {
-        return document.getElementById("top");
-      }
-
-      const chapterBlock = currentTarget.closest(".chapter-block");
-      if (chapterBlock) {
-        return chapterBlock;
-      }
-
-      const glossarySection = currentTarget.closest("#glossary");
-      if (glossarySection) {
-        return glossarySection;
-      }
-
-      if (currentTarget.id === "glossary") {
-        return currentTarget;
-      }
-
-      return document.getElementById("top");
-    }
-
     function jumpToHash(hash) {
       const targetId = hash.replace(/^#/, "");
       const target = targetId ? document.getElementById(targetId) : null;
@@ -798,21 +767,16 @@
     }
 
     function resetToTop() {
-      const pageTarget = getCurrentPageTopTarget();
-      const scrollTarget = document.getElementById("keyword-search") || pageTarget;
-      if (!pageTarget || !scrollTarget) {
+      const pageTarget = document.getElementById("page-top");
+      if (!pageTarget) {
         return;
       }
-
-      closeAllDropdowns();
 
       const root = document.documentElement;
       const previousScrollBehavior = root.style.scrollBehavior;
       root.style.scrollBehavior = "auto";
 
-      history.pushState(null, "", `#${pageTarget.id}`);
-      revealTargetFromHash();
-      scrollTarget.scrollIntoView({ behavior: "auto", block: "start" });
+      pageTarget.scrollIntoView({ behavior: "auto", block: "start" });
 
       window.setTimeout(() => {
         root.style.scrollBehavior = previousScrollBehavior;
