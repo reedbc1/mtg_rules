@@ -618,6 +618,10 @@ code {
     max-height: none;
   }
 
+  .toc-panel .toc-header .top-link {
+    display: none !important;
+  }
+
   .search-header {
     text-align: left;
   }
@@ -647,10 +651,6 @@ code {
 
   .mobile-search-slot {
     display: block;
-  }
-
-  .toc-header .top-link {
-    display: none;
   }
 
   .toc-inner,
