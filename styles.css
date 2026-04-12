@@ -653,12 +653,17 @@ code {
   }
 
   .chapter-summary {
-    padding: 0 0 0.85rem;
+    padding: 1rem 1.2rem;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--paper);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
     border-bottom: 0;
   }
 
   .chapter-sections {
-    padding: 0;
+    padding: 0.9rem 0 0;
   }
 
   .toc {
