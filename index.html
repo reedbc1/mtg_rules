@@ -1204,6 +1204,18 @@
       }
     }
 
+    function syncMobileContentsTopLinkVisibility() {
+      const topLink = document.querySelector(".toc-panel .top-link");
+      if (!topLink) {
+        return;
+      }
+
+      const shouldHideOnMobile = window.matchMedia("(max-width: 980px)").matches;
+      topLink.hidden = shouldHideOnMobile;
+      topLink.setAttribute("aria-hidden", shouldHideOnMobile ? "true" : "false");
+      topLink.tabIndex = shouldHideOnMobile ? -1 : 0;
+    }
+
     function bindTopLinkReset() {
       document.querySelectorAll(".top-link, .mobile-top-link").forEach((topLink) => {
         topLink.addEventListener("click", (event) => {
@@ -1215,9 +1227,11 @@
 
     window.addEventListener("hashchange", revealTargetFromHash);
     window.addEventListener("resize", syncMobileSearchPlacement);
+    window.addEventListener("resize", syncMobileContentsTopLinkVisibility);
 
     bindTopLinkReset();
     syncMobileSearchPlacement();
+    syncMobileContentsTopLinkVisibility();
     init();
   </script>
 </body>
