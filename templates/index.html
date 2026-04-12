@@ -897,6 +897,7 @@
         return;
       }
 
+      syncSearchModeFromHash();
       setVisibleBodyForTarget(target);
       clearSearchIfNavigatingAway(target);
 
@@ -1137,16 +1138,6 @@
       answerCard.className = "ai-result-card";
       answerCard.setAttribute("aria-label", "AI answer");
 
-      const answerLabel = document.createElement("p");
-      answerLabel.className = "ai-result-label";
-      answerLabel.textContent = "AI Answer";
-      answerCard.appendChild(answerLabel);
-
-      const answerQuery = document.createElement("p");
-      answerQuery.className = "ai-result-query";
-      answerQuery.textContent = query;
-      answerCard.appendChild(answerQuery);
-
       const answerBody = document.createElement("div");
       answerBody.className = "ai-answer-text";
       answerBody.textContent = answer || "No answer was returned.";
@@ -1224,8 +1215,6 @@
 
       resultsRoot.innerHTML = `
         <section class="ai-result-card" aria-label="AI answer loading">
-          <p class="ai-result-label">AI Answer</p>
-          <p class="ai-result-query">${escapeHtml(trimmedQuery)}</p>
           <p class="ai-result-body">Retrieving rules and drafting an answer...</p>
         </section>
       `;
@@ -1342,10 +1331,24 @@
       if (aiResultsRoot) {
         aiResultsRoot.innerHTML = `
           <section class="ai-result-card" aria-label="AI answer placeholder">
-            <p class="ai-result-label">AI Answer</p>
             <p class="ai-result-body">Ask a rules question to open a dedicated AI answer page.</p>
           </section>
         `;
+      }
+    }
+
+    function getSearchModeFromHash() {
+      if (window.location.hash === "#ai-results-page") {
+        return SEARCH_MODE_AI;
+      }
+
+      return SEARCH_MODE_KEYWORD;
+    }
+
+    function syncSearchModeFromHash() {
+      const nextMode = getSearchModeFromHash();
+      if (searchState.mode !== nextMode) {
+        setSearchMode(nextMode);
       }
     }
 
@@ -1440,7 +1443,7 @@
         runSearch(searchInput.value);
       });
 
-      setSearchMode(SEARCH_MODE_KEYWORD);
+      setSearchMode(getSearchModeFromHash());
       resetSearchDisplay("");
     }
 

@@ -442,8 +442,12 @@ code {
   color: var(--muted);
 }
 
+.ai-result-card > .ai-result-body:first-child {
+  margin-top: 0;
+}
+
 .ai-answer-text {
-  margin-top: 0.85rem;
+  margin: 0;
   color: var(--ink);
   white-space: pre-wrap;
 }
@@ -780,7 +784,6 @@ code {
 
   .mobile-search-slot {
     display: block;
-    margin-bottom: 1rem;
   }
 
   .toc-header {
