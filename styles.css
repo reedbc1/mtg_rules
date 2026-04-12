@@ -169,13 +169,14 @@ code {
 }
 
 .toc-toggle {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--accent);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   font-weight: 700;
+  line-height: 1;
   cursor: pointer;
 }
 
@@ -636,11 +637,28 @@ code {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.45rem 0.8rem;
+    min-width: 1.2rem;
   }
 
   .toc-panel {
     position: static;
+  }
+
+  .chapter-block {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    overflow: visible;
+  }
+
+  .chapter-summary {
+    padding: 0 0 0.85rem;
+    border-bottom: 0;
+  }
+
+  .chapter-sections {
+    padding: 0;
   }
 
   .toc {

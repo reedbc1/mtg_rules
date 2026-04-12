@@ -29,7 +29,7 @@
               aria-expanded="true"
               aria-controls="toc"
             >
-              Collapse
+              -
             </button>
             <a class="top-link" href="#page-top">Top</a>
           </div>
@@ -1237,7 +1237,7 @@
         toc.hidden = false;
         toggle.hidden = true;
         toggle.setAttribute("aria-expanded", "true");
-        toggle.textContent = "Collapse";
+        toggle.textContent = "-";
         return;
       }
 
@@ -1247,7 +1247,7 @@
         toggle.dataset.initialized = "true";
       }
       toggle.setAttribute("aria-expanded", toc.hidden ? "false" : "true");
-      toggle.textContent = toc.hidden ? "Expand" : "Collapse";
+      toggle.textContent = toc.hidden ? "+" : "-";
     }
 
     function bindMobileTocToggle() {
@@ -1264,7 +1264,7 @@
 
         toc.hidden = !toc.hidden;
         toggle.setAttribute("aria-expanded", toc.hidden ? "false" : "true");
-        toggle.textContent = toc.hidden ? "Expand" : "Collapse";
+        toggle.textContent = toc.hidden ? "+" : "-";
       });
     }
 
