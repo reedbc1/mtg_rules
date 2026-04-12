@@ -428,11 +428,14 @@ code {
   justify-content: space-between;
   gap: 1rem;
   margin: 0;
+}
+
+.rule-section-summary,
+.glossary-summary {
   cursor: pointer;
   list-style: none;
 }
 
-.chapter-summary::-webkit-details-marker,
 .rule-section-summary::-webkit-details-marker,
 .glossary-summary::-webkit-details-marker {
   display: none;
@@ -445,7 +448,6 @@ code {
   color: var(--ink);
 }
 
-.chapter-summary::after,
 .rule-section-summary::after,
 .glossary-summary::after {
   content: "+";
@@ -455,7 +457,6 @@ code {
   color: var(--accent);
 }
 
-.chapter-block[open] .chapter-summary::after,
 .rule-section[open] .rule-section-summary::after,
 .glossary-section[open] .glossary-summary::after {
   content: "-";
@@ -470,7 +471,7 @@ code {
     0 0 0 4px rgba(29, 78, 216, 0.08);
 }
 
-.chapter-block[open] .chapter-summary,
+.chapter-summary,
 .glossary-section[open] .glossary-summary {
   border-bottom: 1px solid var(--line);
 }
@@ -610,6 +611,11 @@ code {
     grid-template-columns: 1fr;
   }
 
+  .mobile-search-slot {
+    display: block;
+    margin-bottom: 1rem;
+  }
+
   .toc-panel {
     position: static;
   }
@@ -647,10 +653,6 @@ code {
 
   .layout {
     gap: 1rem;
-  }
-
-  .mobile-search-slot {
-    display: block;
   }
 
   .toc-inner,

@@ -16,8 +16,9 @@
       </p>
     </header>
 
+    <div id="mobile-search-slot" class="mobile-search-slot"></div>
+
     <div class="layout">
-      <div id="mobile-search-slot" class="mobile-search-slot"></div>
       <aside class="toc-panel" aria-labelledby="toc-heading">
         <div class="toc-inner">
           <div class="toc-header">
@@ -419,11 +420,11 @@
             flushChapter();
             currentChapterTitle = chapter.title;
 
-            currentChapter = document.createElement("details");
+            currentChapter = document.createElement("section");
             currentChapter.className = "chapter-block";
             currentChapter.id = makeChapterId(chapter.title);
 
-            const chapterSummary = document.createElement("summary");
+            const chapterSummary = document.createElement("div");
             chapterSummary.className = "chapter-summary";
 
             const chapterHeading = document.createElement("span");
@@ -1192,7 +1193,7 @@
         return;
       }
 
-      if (window.matchMedia("(max-width: 640px)").matches) {
+      if (window.matchMedia("(max-width: 980px)").matches) {
         if (searchCard.parentElement !== mobileSlot) {
           mobileSlot.appendChild(searchCard);
         }
