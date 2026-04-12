@@ -649,6 +649,10 @@ code {
     display: block;
   }
 
+  .toc-header .top-link {
+    display: none;
+  }
+
   .toc-inner,
   .search-card,
   .intro-card,
