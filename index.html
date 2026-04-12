@@ -17,6 +17,7 @@
     </header>
 
     <div class="layout">
+      <div id="mobile-search-slot" class="mobile-search-slot"></div>
       <aside class="toc-panel" aria-labelledby="toc-heading">
         <div class="toc-inner">
           <div class="toc-header">
@@ -30,6 +31,7 @@
       </aside>
 
       <main id="top" class="rules-panel">
+        <div id="search-card-home"></div>
         <section class="card search-card" aria-label="Keyword search">
           <div class="search-header">
             <p id="search-status" class="search-status">Loading search index…</p>
@@ -64,6 +66,7 @@
           <p class="loading">Loading rules text…</p>
         </section>
         <article id="rules" class="rules-content" aria-label="Magic Comprehensive Rules"></article>
+        <a class="mobile-top-link" href="#page-top">Top</a>
       </main>
     </div>
   </div>
@@ -1181,21 +1184,40 @@
       });
     }
 
-    function bindTopLinkReset() {
-      const topLink = document.querySelector(".top-link");
-      if (!topLink) {
+    function syncMobileSearchPlacement() {
+      const searchCard = document.querySelector(".search-card");
+      const mobileSlot = document.getElementById("mobile-search-slot");
+      const searchCardHome = document.getElementById("search-card-home");
+      if (!searchCard || !mobileSlot || !searchCardHome) {
         return;
       }
 
-      topLink.addEventListener("click", (event) => {
+      if (window.matchMedia("(max-width: 640px)").matches) {
+        if (searchCard.parentElement !== mobileSlot) {
+          mobileSlot.appendChild(searchCard);
+        }
+        return;
+      }
+
+      if (searchCard.parentElement !== searchCardHome.parentElement || searchCard.previousElementSibling !== searchCardHome) {
+        searchCardHome.insertAdjacentElement("afterend", searchCard);
+      }
+    }
+
+    function bindTopLinkReset() {
+      document.querySelectorAll(".top-link, .mobile-top-link").forEach((topLink) => {
+        topLink.addEventListener("click", (event) => {
         event.preventDefault();
         resetToTop();
+      });
       });
     }
 
     window.addEventListener("hashchange", revealTargetFromHash);
+    window.addEventListener("resize", syncMobileSearchPlacement);
 
     bindTopLinkReset();
+    syncMobileSearchPlacement();
     init();
   </script>
 </body>

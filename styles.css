@@ -123,6 +123,11 @@ code {
   align-items: start;
 }
 
+.mobile-search-slot:empty,
+.mobile-top-link {
+  display: none;
+}
+
 .toc-panel {
   position: sticky;
   top: 1rem;
@@ -636,12 +641,40 @@ code {
     padding: 1.4rem 1rem 1.5rem;
   }
 
+  .layout {
+    gap: 1rem;
+  }
+
+  .mobile-search-slot {
+    display: block;
+  }
+
   .toc-inner,
   .search-card,
   .intro-card,
   .rule-section,
   .glossary-section {
     border-radius: 16px;
+  }
+
+  .mobile-top-link {
+    display: block;
+    margin-top: 1rem;
+    padding: 0.95rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 16px;
+    background: var(--accent);
+    color: #eff6ff;
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: center;
+    box-shadow: 0 12px 24px rgba(29, 78, 216, 0.18);
+  }
+
+  .mobile-top-link:hover,
+  .mobile-top-link:focus-visible {
+    text-decoration: none;
+    transform: translateY(-1px);
   }
 
   .search-button {
