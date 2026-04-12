@@ -31,7 +31,6 @@
             >
               -
             </button>
-            <a class="top-link" href="#page-top">Top</a>
           </div>
           <nav id="toc" class="toc" aria-label="Table of contents">
             <p class="loading">Loading contents…</p>
@@ -41,19 +40,37 @@
 
       <main id="top" class="rules-panel">
         <div id="search-card-home"></div>
-        <section class="card search-card" aria-label="Keyword search">
-          <div class="search-header">
-            <p id="search-status" class="search-status">Loading search index…</p>
+        <section class="card search-card" aria-label="Search or AI answer">
+          <div class="search-mode-toggle" role="group" aria-label="Search mode">
+            <button
+              id="keyword-mode-button"
+              class="search-mode-button is-active"
+              type="button"
+              data-search-mode="keyword"
+              aria-pressed="true"
+              disabled
+            >
+              Keyword Search
+            </button>
+            <button
+              id="ai-mode-button"
+              class="search-mode-button"
+              type="button"
+              data-search-mode="ai"
+              aria-pressed="false"
+              disabled
+            >
+              AI Answer
+            </button>
           </div>
 
           <form id="search-form" class="search-form" role="search">
-            <label class="sr-only" for="keyword-search">Search the rules text</label>
+            <label class="sr-only" for="keyword-search">Search the rules text or ask AI</label>
             <input
               id="keyword-search"
               class="search-input"
               type="search"
               name="query"
-              placeholder="Search"
               autocomplete="off"
               spellcheck="false"
               disabled
@@ -71,24 +88,39 @@
           <div id="search-results" class="search-results"></div>
         </section>
 
+        <section id="ai-results-page" class="card search-page ai-results-page" aria-live="polite" hidden>
+          <div class="search-page-header">
+            <h2>AI Answer</h2>
+            <p id="ai-page-summary" class="search-page-summary"></p>
+          </div>
+          <div id="ai-results" class="ai-results"></div>
+        </section>
+
         <section id="intro" class="card intro-card" aria-live="polite">
           <p class="loading">Loading rules text…</p>
         </section>
         <article id="rules" class="rules-content" aria-label="Magic Comprehensive Rules"></article>
-        <a class="mobile-top-link" href="#page-top">Top</a>
       </main>
     </div>
+  </div>
+
+  <div class="floating-actions" aria-label="Page actions">
+    <a class="mobile-top-link" href="#page-top">Top</a>
   </div>
 
   <script>
     const RULE_FILE = "MagicCompRules.txt";
     const SEARCH_RESULT_LIMIT = 75;
+    const SEARCH_MODE_KEYWORD = "keyword";
+    const SEARCH_MODE_AI = "ai";
     const searchState = {
       records: [],
       recordsById: new Map(),
       latestResults: [],
       activeTerms: [],
       selectedTargetId: "",
+      latestAiQuery: "",
+      mode: SEARCH_MODE_KEYWORD,
     };
 
     function slugify(value) {
@@ -744,14 +776,25 @@
       return target;
     }
 
+    function isKeywordResultsTarget(target) {
+      return Boolean(target && (target.id === "search-results-page" || target.closest("#search-results-page")));
+    }
+
+    function isAiResultsTarget(target) {
+      return Boolean(target && (target.id === "ai-results-page" || target.closest("#ai-results-page")));
+    }
+
+    function isSearchInterfaceTarget(target) {
+      return isKeywordResultsTarget(target) || isAiResultsTarget(target);
+    }
+
     function clearSearchIfNavigatingAway(target) {
       const searchInput = document.getElementById("keyword-search");
-      const isSearchPageTarget = target && (target.id === "search-results-page" || target.closest("#search-results-page"));
-      if (!searchInput || isSearchPageTarget) {
+      if (!searchInput || isSearchInterfaceTarget(target)) {
         return;
       }
 
-      if (!searchInput.value && !searchState.activeTerms.length && !searchState.latestResults.length) {
+      if (!searchInput.value && !searchState.activeTerms.length && !searchState.latestResults.length && !searchState.latestAiQuery) {
         return;
       }
 
@@ -762,6 +805,7 @@
     function setVisibleBodyForTarget(target) {
       const intro = document.getElementById("intro");
       const searchPage = document.getElementById("search-results-page");
+      const aiPage = document.getElementById("ai-results-page");
       const chapters = document.querySelectorAll(".chapter-block");
       const glossary = document.getElementById("glossary");
 
@@ -775,6 +819,10 @@
 
       if (searchPage) {
         searchPage.hidden = true;
+      }
+
+      if (aiPage) {
+        aiPage.hidden = true;
       }
 
       if (!target) {
@@ -797,9 +845,16 @@
 
       intro.hidden = true;
 
-      if (target.id === "search-results-page" || target.closest("#search-results-page")) {
+      if (isKeywordResultsTarget(target)) {
         if (searchPage) {
           searchPage.hidden = false;
+        }
+        return;
+      }
+
+      if (isAiResultsTarget(target)) {
+        if (aiPage) {
+          aiPage.hidden = false;
         }
         return;
       }
@@ -973,11 +1028,9 @@
 
     function renderSearchResults(results, query, terms) {
       const resultsRoot = document.getElementById("search-results");
-      const status = document.getElementById("search-status");
       const pageSummary = document.getElementById("search-page-summary");
 
       if (!query.trim()) {
-        status.textContent = "";
         if (pageSummary) {
           pageSummary.textContent = "";
         }
@@ -986,7 +1039,6 @@
       }
 
       if (!results.length) {
-        status.textContent = `No matches for "${query}".`;
         if (pageSummary) {
           pageSummary.textContent = `No matches for "${query}".`;
         }
@@ -1000,7 +1052,6 @@
       const resultLabel = shownResults.length === results.length
         ? `${results.length} matches for "${query}".`
         : `Showing ${shownResults.length} of ${results.length} matches for "${query}".`;
-      status.textContent = resultLabel;
       if (pageSummary) {
         pageSummary.textContent = resultLabel;
       }
@@ -1043,12 +1094,33 @@
       resultsRoot.replaceChildren(fragment);
     }
 
+    function renderAiResults(query) {
+      const pageSummary = document.getElementById("ai-page-summary");
+      const resultsRoot = document.getElementById("ai-results");
+      const trimmedQuery = query.trim();
+
+      searchState.latestAiQuery = trimmedQuery;
+      if (pageSummary) {
+        pageSummary.textContent = `Prompt: "${trimmedQuery}"`;
+      }
+
+      resultsRoot.innerHTML = `
+        <section class="ai-result-card" aria-label="AI answer placeholder">
+          <p class="ai-result-label">Prompt</p>
+          <p class="ai-result-query">${escapeHtml(trimmedQuery)}</p>
+          <p class="ai-result-body">AI answer mode is set up. Connect the RAG backend next to show generated answers here.</p>
+        </section>
+      `;
+    }
+
     function runSearch(query) {
       if (!query.trim()) {
         resetSearchDisplay(query);
         return;
       }
 
+      collapseMobileToc();
+      searchState.latestAiQuery = "";
       searchState.selectedTargetId = "";
       searchState.activeTerms = parseSearchTerms(query);
       searchState.latestResults = searchRecords(query);
@@ -1057,40 +1129,119 @@
       jumpToHash("#search-results-page");
     }
 
+    function runAiSearch(query) {
+      const trimmedQuery = query.trim();
+      if (!trimmedQuery) {
+        resetSearchDisplay(query);
+        return;
+      }
+
+      collapseMobileToc();
+      searchState.selectedTargetId = "";
+      searchState.activeTerms = [];
+      searchState.latestResults = [];
+      hideSearchResults();
+      applyActiveDocumentHighlights();
+      renderAiResults(trimmedQuery);
+      jumpToHash("#ai-results-page");
+    }
+
     function hideSearchResults() {
       document.getElementById("search-results").replaceChildren();
+    }
+
+    function hideAiResults() {
+      document.getElementById("ai-results").replaceChildren();
+    }
+
+    function setSearchMode(mode) {
+      const nextMode = mode === SEARCH_MODE_AI ? SEARCH_MODE_AI : SEARCH_MODE_KEYWORD;
+      const searchCard = document.querySelector(".search-card");
+      const searchForm = document.getElementById("search-form");
+      const submitButton = searchForm ? searchForm.querySelector('button[type="submit"]') : null;
+      const searchInput = document.getElementById("keyword-search");
+
+      searchState.mode = nextMode;
+
+      document.querySelectorAll(".search-mode-button").forEach((button) => {
+        const isActive = button.dataset.searchMode === nextMode;
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
+
+      if (submitButton) {
+        submitButton.textContent = nextMode === SEARCH_MODE_AI ? "Ask AI" : "Search";
+      }
+
+      if (searchInput) {
+        searchInput.placeholder = nextMode === SEARCH_MODE_AI ? "Ask AI" : "Search";
+      }
+
+      if (searchCard) {
+        searchCard.setAttribute("aria-label", nextMode === SEARCH_MODE_AI ? "AI answer" : "Keyword search");
+      }
+
+      if (searchForm) {
+        searchForm.setAttribute("aria-label", nextMode === SEARCH_MODE_AI ? "AI answer prompt" : "Keyword search");
+      }
+
+      resetSearchDisplay(searchInput ? searchInput.value : "");
     }
 
     function resetSearchDisplay(query) {
       searchState.selectedTargetId = "";
       searchState.activeTerms = [];
       searchState.latestResults = [];
+      searchState.latestAiQuery = "";
       hideSearchResults();
+      hideAiResults();
       applyActiveDocumentHighlights();
 
-      const status = document.getElementById("search-status");
       const pageSummary = document.getElementById("search-page-summary");
+      const aiPageSummary = document.getElementById("ai-page-summary");
       const resultsRoot = document.getElementById("search-results");
+      const aiResultsRoot = document.getElementById("ai-results");
+      const isAiMode = searchState.mode === SEARCH_MODE_AI;
       if (!query.trim()) {
-        status.textContent = "";
         if (pageSummary) {
           pageSummary.textContent = "";
+        }
+        if (aiPageSummary) {
+          aiPageSummary.textContent = "";
         }
         if (resultsRoot) {
           resultsRoot.innerHTML = `
             <p class="search-empty">Search for rules text or glossary entries to open a dedicated results page.</p>
           `;
         }
+        if (aiResultsRoot) {
+          aiResultsRoot.innerHTML = `
+            <section class="ai-result-card" aria-label="AI answer placeholder">
+              <p class="ai-result-label">AI Answer</p>
+              <p class="ai-result-body">Ask a rules question to open a dedicated AI answer page.</p>
+            </section>
+          `;
+        }
         return;
       }
 
-      status.textContent = 'Press "Search" to see matches.';
       if (pageSummary) {
-        pageSummary.textContent = `Press "Search" to open results for "${query}".`;
+        pageSummary.textContent = isAiMode ? "" : `Press "Search" to open results for "${query}".`;
+      }
+      if (aiPageSummary) {
+        aiPageSummary.textContent = isAiMode ? `Press "Ask AI" to open an answer page for "${query}".` : "";
       }
       if (resultsRoot) {
         resultsRoot.innerHTML = `
-          <p class="search-empty">Press "Search" to open a dedicated results page for "${escapeHtml(query)}".</p>
+          <p class="search-empty">${isAiMode ? "Switch to Keyword Search to see term matches." : `Press "Search" to open a dedicated results page for "${escapeHtml(query)}".`}</p>
+        `;
+      }
+      if (aiResultsRoot) {
+        aiResultsRoot.innerHTML = `
+          <section class="ai-result-card" aria-label="AI answer placeholder">
+            <p class="ai-result-label">${isAiMode ? "Prompt" : "AI Answer"}</p>
+            <p class="ai-result-body">${isAiMode ? `Press "Ask AI" to open a dedicated answer page for "${escapeHtml(query)}".` : "Switch to AI Answer mode to ask a rules question."}</p>
+          </section>
         `;
       }
     }
@@ -1102,9 +1253,16 @@
       const searchForm = document.getElementById("search-form");
       const searchInput = document.getElementById("keyword-search");
       const submitButton = searchForm.querySelector('button[type="submit"]');
+      const modeButtons = document.querySelectorAll(".search-mode-button");
 
       searchInput.disabled = false;
       submitButton.disabled = false;
+      modeButtons.forEach((button) => {
+        button.disabled = false;
+        button.addEventListener("click", () => {
+          setSearchMode(button.dataset.searchMode);
+        });
+      });
 
       searchInput.addEventListener("input", () => {
         resetSearchDisplay(searchInput.value);
@@ -1112,9 +1270,15 @@
 
       searchForm.addEventListener("submit", (event) => {
         event.preventDefault();
+        if (searchState.mode === SEARCH_MODE_AI) {
+          runAiSearch(searchInput.value);
+          return;
+        }
+
         runSearch(searchInput.value);
       });
 
+      setSearchMode(SEARCH_MODE_KEYWORD);
       resetSearchDisplay("");
     }
 
@@ -1153,7 +1317,6 @@
         document.getElementById("toc").innerHTML = `
           <p class="error">Could not load the table of contents.</p>
         `;
-        document.getElementById("search-status").textContent = "Search is unavailable.";
         document.getElementById("intro").innerHTML = `
           <h2>Unable to load the rules text</h2>
           <p class="error">${error.message}</p>
@@ -1235,18 +1398,6 @@
       }
     }
 
-    function syncMobileContentsTopLinkVisibility() {
-      const topLink = document.querySelector(".toc-panel .top-link");
-      if (!topLink) {
-        return;
-      }
-
-      const shouldHideOnMobile = window.matchMedia("(max-width: 980px)").matches;
-      topLink.hidden = shouldHideOnMobile;
-      topLink.setAttribute("aria-hidden", shouldHideOnMobile ? "true" : "false");
-      topLink.tabIndex = shouldHideOnMobile ? -1 : 0;
-    }
-
     function syncMobileTocCollapseState() {
       const toc = document.getElementById("toc");
       const toggle = document.getElementById("toc-toggle");
@@ -1272,6 +1423,19 @@
       toggle.textContent = toc.hidden ? "+" : "-";
     }
 
+    function collapseMobileToc() {
+      const toc = document.getElementById("toc");
+      const toggle = document.getElementById("toc-toggle");
+      const isMobile = window.matchMedia("(max-width: 980px)").matches;
+      if (!toc || !toggle || !isMobile) {
+        return;
+      }
+
+      toc.hidden = true;
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.textContent = "+";
+    }
+
     function bindMobileTocToggle() {
       const toc = document.getElementById("toc");
       const toggle = document.getElementById("toc-toggle");
@@ -1291,7 +1455,7 @@
     }
 
     function bindTopLinkReset() {
-      document.querySelectorAll(".top-link, .mobile-top-link").forEach((topLink) => {
+      document.querySelectorAll(".mobile-top-link").forEach((topLink) => {
         topLink.addEventListener("click", (event) => {
         event.preventDefault();
         resetToTop();
@@ -1316,14 +1480,12 @@
 
     window.addEventListener("hashchange", revealTargetFromHash);
     window.addEventListener("resize", syncMobileSearchPlacement);
-    window.addEventListener("resize", syncMobileContentsTopLinkVisibility);
     window.addEventListener("resize", syncMobileTocCollapseState);
 
     bindMobileTocToggle();
     bindHeroIntroNavigation();
     bindTopLinkReset();
     syncMobileSearchPlacement();
-    syncMobileContentsTopLinkVisibility();
     syncMobileTocCollapseState();
     init();
   </script>
