@@ -766,11 +766,19 @@
       }, 0);
     }
 
+    function collapseOpenSections() {
+      document.querySelectorAll(".rules-panel .rule-section[open]").forEach((section) => {
+        section.open = false;
+      });
+    }
+
     function resetToTop() {
       const pageTarget = document.getElementById("page-top");
       if (!pageTarget) {
         return;
       }
+
+      collapseOpenSections();
 
       const root = document.documentElement;
       const previousScrollBehavior = root.style.scrollBehavior;
