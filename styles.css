@@ -660,13 +660,15 @@ code {
   .mobile-top-link {
     display: block;
     margin-top: 1rem;
+    margin-left: auto;
     padding: 0.95rem 1rem;
+    width: fit-content;
     border: 1px solid transparent;
     border-radius: 16px;
     background: var(--accent);
     color: #eff6ff;
     font-size: 1rem;
-    font-weight: 700;
+    font-weight: 800;
     text-align: center;
     box-shadow: 0 12px 24px rgba(29, 78, 216, 0.18);
   }
