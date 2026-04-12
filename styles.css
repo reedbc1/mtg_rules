@@ -199,6 +199,7 @@ code {
 }
 
 .search-card,
+.search-page,
 .intro-card,
 .rule-section,
 .glossary-section {
@@ -210,6 +211,28 @@ code {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.68), transparent 95%),
     var(--paper-strong);
+}
+
+.search-page {
+  margin-bottom: 1rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.64), transparent 95%),
+    var(--paper-strong);
+}
+
+.search-page-header {
+  margin-bottom: 1rem;
+}
+
+.search-page-header h2,
+.search-page-summary {
+  margin: 0;
+}
+
+.search-page-summary {
+  margin-top: 0.45rem;
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .search-header {
