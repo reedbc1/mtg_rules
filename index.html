@@ -113,11 +113,56 @@
 
     function createParagraph(text, className) {
       const paragraph = document.createElement("p");
-      paragraph.textContent = text;
+      appendLinkedRuleText(paragraph, text);
       if (className) {
         paragraph.className = className;
       }
       return paragraph;
+    }
+
+    function createRuleReferenceLink(ruleNumber) {
+      const link = document.createElement("a");
+      link.className = "rule-ref-link";
+      link.href = `#${makeRuleLineId(ruleNumber)}`;
+      link.textContent = ruleNumber;
+      return link;
+    }
+
+    function appendLinkedRuleText(element, text) {
+      const referenceRegex = /\b(rule|rules)\s+((?:\d+\.\d+[a-z]?\.?)(?:\s*(?:,|and|or)\s+\d+\.\d+[a-z]?\.?)*)/gi;
+      const ruleNumberRegex = /\d+\.\d+[a-z]?\.?/gi;
+      let lastIndex = 0;
+
+      Array.from(text.matchAll(referenceRegex)).forEach((match) => {
+        const matchIndex = match.index ?? 0;
+        if (matchIndex > lastIndex) {
+          element.appendChild(document.createTextNode(text.slice(lastIndex, matchIndex)));
+        }
+
+        const [, prefix, references] = match;
+        element.appendChild(document.createTextNode(`${prefix} `));
+
+        let referenceIndex = 0;
+        Array.from(references.matchAll(ruleNumberRegex)).forEach((referenceMatch) => {
+          const numberIndex = referenceMatch.index ?? 0;
+          if (numberIndex > referenceIndex) {
+            element.appendChild(document.createTextNode(references.slice(referenceIndex, numberIndex)));
+          }
+
+          element.appendChild(createRuleReferenceLink(referenceMatch[0]));
+          referenceIndex = numberIndex + referenceMatch[0].length;
+        });
+
+        if (referenceIndex < references.length) {
+          element.appendChild(document.createTextNode(references.slice(referenceIndex)));
+        }
+
+        lastIndex = matchIndex + match[0].length;
+      });
+
+      if (lastIndex < text.length) {
+        element.appendChild(document.createTextNode(text.slice(lastIndex)));
+      }
     }
 
     function normalizeSearchText(value) {
@@ -423,7 +468,7 @@
           number.className = "rule-number";
           number.textContent = ruleNumber;
           paragraph.appendChild(number);
-          paragraph.append(` ${ruleText}`);
+          appendLinkedRuleText(paragraph, ` ${ruleText}`);
           currentSectionBody.appendChild(paragraph);
 
           createSearchRecord(records, {

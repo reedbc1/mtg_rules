@@ -548,6 +548,17 @@ code {
   color: var(--muted);
 }
 
+.rule-ref-link {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.rule-ref-link:hover,
+.rule-ref-link:focus-visible {
+  color: #1e40af;
+}
+
 .glossary-entry + .glossary-entry {
   margin-top: 1rem;
   padding-top: 1rem;
