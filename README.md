@@ -33,12 +33,24 @@ Search the index:
 python rag_pipeline.py search --index data/mtg_rules_index.json --query "How does first strike work in combat?"
 ```
 
-Run the Streamlit chat app:
+Run the Flask app locally in development:
 
 ```bash
-streamlit run app.py
+flask --app app run --debug
 ```
 
-The app loads the saved index, retrieves the top-k most relevant chunks for each question, and sends those chunks to `gpt-4o` to answer in a chat interface.
+Run the Flask app with Gunicorn:
+
+```bash
+gunicorn -c gunicorn.conf.py wsgi:app
+```
+
+Run the Streamlit app:
+
+```bash
+streamlit run streamlit/app.py
+```
+
+The Flask app loads the saved index, retrieves the top-k most relevant chunks for each question, and sends those chunks to `gpt-4o` to answer in a chat interface.
 
 Set `OPENAI_API_KEY` before running the build, search, or chat commands.
