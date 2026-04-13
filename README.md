@@ -45,6 +45,13 @@ Run the Flask app with Gunicorn:
 gunicorn -c gunicorn.conf.py wsgi:app
 ```
 
+The `/api/ai-answer` endpoint is rate limited per client IP to `10/minute` and `100/day`
+using Redis-backed `Flask-Limiter`. Configure Redis with `RATELIMIT_STORAGE_URI` or
+`REDIS_URL`. If you are running behind a reverse proxy or load balancer, set
+`TRUSTED_PROXY_HOPS` to the number of trusted proxy hops so rate limiting uses the
+real client IP instead of the proxy IP. This repo's Gunicorn config sets
+`TRUSTED_PROXY_HOPS=1`, which matches a `cloudflared -> gunicorn` deployment.
+
 Run the Streamlit app:
 
 ```bash

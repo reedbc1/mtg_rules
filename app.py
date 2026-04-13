@@ -6,6 +6,9 @@ from functools import lru_cache
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from rag_pipeline import answer_query, load_index
 
@@ -14,6 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_INDEX_PATH = BASE_DIR / "data" / "mtg_rules_index.json"
 DEFAULT_TOP_K = 5
 DEFAULT_CHAT_MODEL = "gpt-4o"
+DEFAULT_RATE_LIMIT_STORAGE_URI = "redis://localhost:6379/0"
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
@@ -25,6 +29,21 @@ def get_index_path() -> Path:
 
 def get_chat_model() -> str:
     return os.environ.get("OPENAI_CHAT_MODEL", DEFAULT_CHAT_MODEL)
+
+
+def get_rate_limit_storage_uri() -> str:
+    return os.environ.get(
+        "RATELIMIT_STORAGE_URI",
+        os.environ.get("REDIS_URL", DEFAULT_RATE_LIMIT_STORAGE_URI),
+    )
+
+
+def get_trusted_proxy_hops() -> int:
+    configured_hops = os.environ.get("TRUSTED_PROXY_HOPS", "0")
+    try:
+        return max(0, int(configured_hops))
+    except ValueError:
+        return 0
 
 
 def get_top_k() -> int:
@@ -41,6 +60,28 @@ def get_top_k() -> int:
 @lru_cache(maxsize=1)
 def load_cached_index() -> dict:
     return load_index(get_index_path())
+
+
+def get_rate_limit_key() -> str:
+    return get_remote_address() or "unknown"
+
+
+trusted_proxy_hops = get_trusted_proxy_hops()
+if trusted_proxy_hops > 0:
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app,
+        x_for=trusted_proxy_hops,
+        x_proto=trusted_proxy_hops,
+        x_host=trusted_proxy_hops,
+    )
+
+
+limiter = Limiter(
+    key_func=get_rate_limit_key,
+    app=app,
+    default_limits=[],
+    storage_uri=get_rate_limit_storage_uri(),
+)
 
 
 def build_source_payload(results: list[tuple[float, dict]]) -> list[dict]:
@@ -69,7 +110,16 @@ def home():
     return render_template("index.html")
 
 
+@app.errorhandler(429)
+def handle_rate_limit_exceeded(_exc):
+    message = "Limit reached, please try again later."
+    if request.path.startswith("/api/"):
+        return jsonify({"error": message}), 429
+    return message, 429
+
+
 @app.post("/api/ai-answer")
+@limiter.limit("10 per minute; 100 per day")
 def api_ai_answer():
     payload = request.get_json(silent=True) or {}
     query = str(payload.get("query", "")).strip()
