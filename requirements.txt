@@ -1,5 +1,7 @@
 flask
+Flask-Limiter
 gunicorn
+redis
 requests
 openai
 python-dotenv
