@@ -1200,7 +1200,7 @@
       searchState.latestResults = searchRecords(query);
       renderSearchResults(searchState.latestResults, query, searchState.activeTerms);
       applyActiveDocumentHighlights();
-      jumpToHash("#search-results-page");
+      navigateInPlaceToHash("#search-results-page");
     }
 
     function renderAiLoading(query) {
@@ -1277,7 +1277,7 @@
       applyActiveDocumentHighlights();
       renderAiLoading(trimmedQuery);
       updateSearchSubmitButton();
-      jumpToHash("#ai-results-page");
+      navigateInPlaceToHash("#ai-results-page");
 
       try {
         const response = await fetch(AI_ANSWER_API_URL, {
@@ -1435,6 +1435,7 @@
 
       searchForm.addEventListener("submit", async (event) => {
         event.preventDefault();
+        searchInput.blur();
         if (searchState.mode === SEARCH_MODE_AI) {
           await runAiSearch(searchInput.value);
           return;
