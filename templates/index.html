@@ -120,6 +120,7 @@
       latestResults: [],
       activeTerms: [],
       selectedTargetId: "",
+      latestKeywordQuery: "",
       latestAiQuery: "",
       aiLoading: false,
       mode: SEARCH_MODE_KEYWORD,
@@ -790,13 +791,27 @@
       return isKeywordResultsTarget(target) || isAiResultsTarget(target);
     }
 
+    function hasKeywordSubmission() {
+      return Boolean(searchState.latestKeywordQuery);
+    }
+
+    function hasAiSubmission() {
+      return Boolean(searchState.latestAiQuery);
+    }
+
     function clearSearchIfNavigatingAway(target) {
       const searchInput = document.getElementById("keyword-search");
       if (!searchInput || isSearchInterfaceTarget(target)) {
         return;
       }
 
-      if (!searchInput.value && !searchState.activeTerms.length && !searchState.latestResults.length && !searchState.latestAiQuery) {
+      if (
+        !searchInput.value &&
+        !searchState.activeTerms.length &&
+        !searchState.latestResults.length &&
+        !searchState.latestKeywordQuery &&
+        !searchState.latestAiQuery
+      ) {
         return;
       }
 
@@ -848,14 +863,14 @@
       intro.hidden = true;
 
       if (isKeywordResultsTarget(target)) {
-        if (searchPage) {
+        if (searchPage && hasKeywordSubmission()) {
           searchPage.hidden = false;
         }
         return;
       }
 
       if (isAiResultsTarget(target)) {
-        if (aiPage) {
+        if (aiPage && hasAiSubmission()) {
           aiPage.hidden = false;
         }
         return;
@@ -1188,19 +1203,21 @@
     }
 
     function runSearch(query) {
-      if (!query.trim()) {
+      const trimmedQuery = query.trim();
+      if (!trimmedQuery) {
         resetSearchDisplay(query);
         return;
       }
 
       collapseMobileToc();
+      searchState.latestKeywordQuery = trimmedQuery;
       searchState.latestAiQuery = "";
       searchState.selectedTargetId = "";
-      searchState.activeTerms = parseSearchTerms(query);
-      searchState.latestResults = searchRecords(query);
-      renderSearchResults(searchState.latestResults, query, searchState.activeTerms);
+      searchState.activeTerms = parseSearchTerms(trimmedQuery);
+      searchState.latestResults = searchRecords(trimmedQuery);
+      renderSearchResults(searchState.latestResults, trimmedQuery, searchState.activeTerms);
       applyActiveDocumentHighlights();
-      navigateInPlaceToHash("#search-results-page");
+      jumpToHash("#search-results-page");
     }
 
     function renderAiLoading(query) {
@@ -1270,6 +1287,7 @@
 
       collapseMobileToc();
       searchState.aiLoading = true;
+      searchState.latestKeywordQuery = "";
       searchState.selectedTargetId = "";
       searchState.activeTerms = [];
       searchState.latestResults = [];
@@ -1277,7 +1295,7 @@
       applyActiveDocumentHighlights();
       renderAiLoading(trimmedQuery);
       updateSearchSubmitButton();
-      navigateInPlaceToHash("#ai-results-page");
+      jumpToHash("#ai-results-page");
 
       try {
         const response = await fetch(AI_ANSWER_API_URL, {
@@ -1305,36 +1323,8 @@
       document.getElementById("search-results").replaceChildren();
     }
 
-    function renderDefaultKeywordPromptCard() {
-      const pageSummary = document.getElementById("search-page-summary");
-      const resultsRoot = document.getElementById("search-results");
-      if (pageSummary) {
-        pageSummary.textContent = "";
-      }
-      if (resultsRoot) {
-        resultsRoot.innerHTML = `
-          <p class="search-empty">Search for rules text or glossary entries to open a dedicated results page.</p>
-        `;
-      }
-    }
-
     function hideAiResults() {
       document.getElementById("ai-results").replaceChildren();
-    }
-
-    function renderDefaultAiPromptCard() {
-      const aiPageSummary = document.getElementById("ai-page-summary");
-      const aiResultsRoot = document.getElementById("ai-results");
-      if (aiPageSummary) {
-        aiPageSummary.textContent = "";
-      }
-      if (aiResultsRoot) {
-        aiResultsRoot.innerHTML = `
-          <section class="ai-result-card" aria-label="AI answer placeholder">
-            <p class="ai-result-body">Ask a rules question to open a dedicated AI answer page.</p>
-          </section>
-        `;
-      }
     }
 
     function getSearchModeFromHash() {
@@ -1391,26 +1381,24 @@
       searchState.selectedTargetId = "";
       searchState.activeTerms = [];
       searchState.latestResults = [];
+      searchState.latestKeywordQuery = "";
       searchState.latestAiQuery = "";
       hideSearchResults();
       hideAiResults();
       applyActiveDocumentHighlights();
 
       const pageSummary = document.getElementById("search-page-summary");
-      const isAiMode = searchState.mode === SEARCH_MODE_AI;
-      if (!query.trim()) {
-        renderDefaultKeywordPromptCard();
-        renderDefaultAiPromptCard();
-        return;
+      const aiPageSummary = document.getElementById("ai-page-summary");
+      if (pageSummary) {
+        pageSummary.textContent = "";
+      }
+      if (aiPageSummary) {
+        aiPageSummary.textContent = "";
       }
 
-      if (pageSummary) {
-        pageSummary.textContent = isAiMode ? "" : `Press "Search" to open results for "${query}".`;
-      }
-      if (!isAiMode) {
-        renderDefaultKeywordPromptCard();
-      }
-      renderDefaultAiPromptCard();
+      const currentHash = window.location.hash;
+      const currentTarget = currentHash ? document.querySelector(currentHash) : null;
+      setVisibleBodyForTarget(currentTarget);
     }
 
     function initializeSearch(records) {
