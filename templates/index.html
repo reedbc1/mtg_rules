@@ -112,6 +112,7 @@
     const RULE_FILE = {{ url_for('static', filename='MagicCompRules.txt') | tojson }};
     const RULE_730_SOUND_URL = {{ url_for('serve_sound', filename='sound1.mp3') | tojson }};
     const AI_ANSWER_API_URL = {{ url_for('api_ai_answer') | tojson }};
+    const RULE_730_AUDIO_TIME_STORAGE_KEY = "mtg-rule-730-audio-time";
     const SEARCH_RESULT_LIMIT = 75;
     const SEARCH_MODE_KEYWORD = "keyword";
     const SEARCH_MODE_AI = "ai";
@@ -130,6 +131,34 @@
     };
 
     rule730Audio.preload = "auto";
+    rule730Audio.loop = true;
+
+    function loadRule730AudioProgress() {
+      try {
+        const storedValue = window.localStorage.getItem(RULE_730_AUDIO_TIME_STORAGE_KEY);
+        const parsedValue = Number(storedValue);
+        return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 0;
+      } catch (_error) {
+        return 0;
+      }
+    }
+
+    function saveRule730AudioProgress() {
+      try {
+        const currentTime = Number.isFinite(rule730Audio.currentTime) ? rule730Audio.currentTime : 0;
+        window.localStorage.setItem(RULE_730_AUDIO_TIME_STORAGE_KEY, String(Math.max(0, currentTime)));
+      } catch (_error) {
+        // Ignore storage failures and keep playback working.
+      }
+    }
+
+    function clearRule730AudioProgress() {
+      try {
+        window.localStorage.removeItem(RULE_730_AUDIO_TIME_STORAGE_KEY);
+      } catch (_error) {
+        // Ignore storage failures and keep playback working.
+      }
+    }
 
     function isRule730SectionActive() {
       const section = document.getElementById("rule-730");
@@ -150,14 +179,18 @@
 
       if (shouldPlay) {
         rule730Audio.pause();
-        rule730Audio.currentTime = 0;
+        rule730Audio.currentTime = loadRule730AudioProgress();
         rule730Audio.play().catch(() => {});
         return;
       }
 
+      saveRule730AudioProgress();
       rule730Audio.pause();
       rule730Audio.currentTime = 0;
     }
+
+    window.addEventListener("beforeunload", clearRule730AudioProgress);
+    window.addEventListener("pagehide", clearRule730AudioProgress);
 
     function slugify(value) {
       return value
