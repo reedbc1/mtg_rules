@@ -5,7 +5,7 @@ import textwrap
 from functools import lru_cache
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -15,6 +15,7 @@ from rag_pipeline import answer_query, load_index
 
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_INDEX_PATH = BASE_DIR / "data" / "mtg_rules_index.json"
+SOUNDS_DIR = BASE_DIR / "sounds"
 DEFAULT_TOP_K = 5
 DEFAULT_CHAT_MODEL = "gpt-4o"
 DEFAULT_RATE_LIMIT_STORAGE_URI = "redis://localhost:6379/0"
@@ -108,6 +109,11 @@ def build_source_payload(results: list[tuple[float, dict]]) -> list[dict]:
 @app.get("/")
 def home():
     return render_template("index.html")
+
+
+@app.get("/sounds/<path:filename>")
+def serve_sound(filename: str):
+    return send_from_directory(SOUNDS_DIR, filename)
 
 
 @app.errorhandler(429)

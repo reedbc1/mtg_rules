@@ -110,10 +110,13 @@
 
   <script>
     const RULE_FILE = {{ url_for('static', filename='MagicCompRules.txt') | tojson }};
+    const RULE_730_SOUND_URL = {{ url_for('serve_sound', filename='sound1.mp3') | tojson }};
     const AI_ANSWER_API_URL = {{ url_for('api_ai_answer') | tojson }};
     const SEARCH_RESULT_LIMIT = 75;
     const SEARCH_MODE_KEYWORD = "keyword";
     const SEARCH_MODE_AI = "ai";
+    const rule730Audio = new Audio(RULE_730_SOUND_URL);
+    let isRule730AudioActive = false;
     const searchState = {
       records: [],
       recordsById: new Map(),
@@ -125,6 +128,36 @@
       aiLoading: false,
       mode: SEARCH_MODE_KEYWORD,
     };
+
+    rule730Audio.preload = "auto";
+
+    function isRule730SectionActive() {
+      const section = document.getElementById("rule-730");
+      if (!section) {
+        return false;
+      }
+
+      return section.open && !section.closest("[hidden]");
+    }
+
+    function syncRule730Audio() {
+      const shouldPlay = isRule730SectionActive();
+      if (shouldPlay === isRule730AudioActive) {
+        return;
+      }
+
+      isRule730AudioActive = shouldPlay;
+
+      if (shouldPlay) {
+        rule730Audio.pause();
+        rule730Audio.currentTime = 0;
+        rule730Audio.play().catch(() => {});
+        return;
+      }
+
+      rule730Audio.pause();
+      rule730Audio.currentTime = 0;
+    }
 
     function slugify(value) {
       return value
@@ -844,11 +877,13 @@
 
       if (!target) {
         intro.hidden = false;
+        syncRule730Audio();
         return;
       }
 
       if (target.id === "top" || target.id === "page-top") {
         intro.hidden = false;
+        syncRule730Audio();
         return;
       }
 
@@ -866,6 +901,7 @@
         if (searchPage && hasKeywordSubmission()) {
           searchPage.hidden = false;
         }
+        syncRule730Audio();
         return;
       }
 
@@ -873,22 +909,26 @@
         if (aiPage && hasAiSubmission()) {
           aiPage.hidden = false;
         }
+        syncRule730Audio();
         return;
       }
 
       if (target.id === "intro") {
         intro.hidden = false;
+        syncRule730Audio();
         return;
       }
 
       const chapterBlock = target.closest(".chapter-block");
       if (chapterBlock) {
         chapterBlock.hidden = false;
+        syncRule730Audio();
         return;
       }
 
       if (target.classList.contains("chapter-block")) {
         target.hidden = false;
+        syncRule730Audio();
         return;
       }
 
@@ -897,6 +937,8 @@
           glossary.hidden = false;
         }
       }
+
+      syncRule730Audio();
     }
 
     function revealTargetFromHash() {
@@ -923,6 +965,8 @@
         }
         node = node.parentElement;
       }
+
+      syncRule730Audio();
 
       const scrollTarget = getHashScrollTarget(target);
       if (scrollTarget) {
@@ -987,6 +1031,7 @@
       document.querySelectorAll(".rules-panel .rule-section[open]").forEach((section) => {
         section.open = false;
       });
+      syncRule730Audio();
     }
 
     function resetToTop() {
@@ -1493,6 +1538,7 @@
 
           if (!sectionGroup) {
             section.open = willOpen;
+            syncRule730Audio();
             if (willOpen) {
               summary.scrollIntoView({ behavior: "auto", block: "start" });
             }
@@ -1508,6 +1554,7 @@
           }
 
           section.open = willOpen;
+          syncRule730Audio();
           if (!willOpen) {
             return;
           }
