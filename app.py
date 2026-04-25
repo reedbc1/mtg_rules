@@ -16,7 +16,7 @@ from rag_pipeline import answer_query, load_index
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_INDEX_PATH = BASE_DIR / "data" / "mtg_rules_index.json"
 SOUNDS_DIR = BASE_DIR / "sounds"
-DEFAULT_TOP_K = 5
+DEFAULT_TOP_K = 10
 DEFAULT_CHAT_MODEL = "gpt-5.4-mini"
 DEFAULT_RATE_LIMIT_STORAGE_URI = "memory://"
 
