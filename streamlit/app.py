@@ -9,7 +9,7 @@ from rag_pipeline import answer_query, load_index
 
 
 DEFAULT_INDEX_PATH = "data/mtg_rules_index.json"
-DEFAULT_CHAT_MODEL = "gpt-4o"
+DEFAULT_CHAT_MODEL = "gpt-5.4-mini"
 
 
 @st.cache_data(show_spinner=False)
@@ -39,7 +39,7 @@ def render_sources(results: list[tuple[float, dict]]) -> None:
 def main() -> None:
     st.set_page_config(page_title="MTG Rules Chat", page_icon=":game_die:", layout="wide")
     st.title("MTG Comprehensive Rules Chat")
-    st.write("Ask a question about the Magic comprehensive rules. The app retrieves the closest rule chunks and uses `gpt-4o` to answer.")
+    st.write("Ask a question about the Magic comprehensive rules. The app retrieves the closest rule chunks and uses `gpt-5.4-mini` to answer.")
 
     with st.sidebar:
         st.header("Settings")

@@ -386,7 +386,7 @@ def answer_query(
         "When helpful, cite the retrieved rule titles or glossary entries in plain language."
     )
 
-    messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+    messages: list[dict[str, str]] = []
 
     if conversation_history:
         messages.extend(conversation_history)
@@ -404,11 +404,12 @@ def answer_query(
     )
 
     client = get_client()
-    response = client.chat.completions.create(
+    response = client.responses.create(
         model=chat_model,
-        messages=messages,
+        instructions=system_prompt,
+        input=messages,
     )
-    answer = response.choices[0].message.content or ""
+    answer = response.output_text or ""
     return answer, results
 
 

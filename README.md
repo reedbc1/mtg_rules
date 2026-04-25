@@ -58,6 +58,7 @@ Run the Streamlit app:
 streamlit run streamlit/app.py
 ```
 
-The Flask app loads the saved index, retrieves the top-k most relevant chunks for each question, and sends those chunks to `gpt-4o` to answer in a chat interface.
+The Flask app loads the saved index, retrieves the top-k most relevant chunks for each question, and sends those chunks to `gpt-5.4-mini` to answer in a chat interface.
 
 Set `OPENAI_API_KEY` before running the build, search, or chat commands.
+For shared deployments, set `RATELIMIT_STORAGE_URI` or `REDIS_URL` to a Redis URL. Local runs default to in-memory rate limiting.

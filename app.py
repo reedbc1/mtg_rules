@@ -17,8 +17,8 @@ BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_INDEX_PATH = BASE_DIR / "data" / "mtg_rules_index.json"
 SOUNDS_DIR = BASE_DIR / "sounds"
 DEFAULT_TOP_K = 5
-DEFAULT_CHAT_MODEL = "gpt-4o"
-DEFAULT_RATE_LIMIT_STORAGE_URI = "redis://localhost:6379/0"
+DEFAULT_CHAT_MODEL = "gpt-5.4-mini"
+DEFAULT_RATE_LIMIT_STORAGE_URI = "memory://"
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
