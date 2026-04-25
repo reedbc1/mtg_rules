@@ -373,7 +373,7 @@ def answer_query(
     index: dict,
     query: str,
     top_k: int,
-    chat_model: str = "gpt-4o",
+    chat_model: str = "gpt-5.4-mini",
     conversation_history: list[dict[str, str]] | None = None,
 ) -> tuple[str, list[tuple[float, dict]]]:
     results = search_index(index=index, query=query, top_k=top_k)
